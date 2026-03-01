@@ -262,10 +262,12 @@ def load_swing_trade_data():
         df = pd.read_csv(io.StringIO(content))
         
         # Standardize columns based on user description
-        # 0: ID, 1: Data, 2: Ativo, 4: Periodo (1W/1M), 6: Entrou (Sim/Não), 7: Resultado, 8: Obs
-        new_cols = ['ID', 'Data', 'Ativo', 'Extra1', 'Periodo', 'Extra2', 'Entrou', 'Resultado', 'Obs1', 'Obs2']
+        # 0: ID, 1: Data, 2: Ativo, 4: Periodo (1W/1M), 6: Entrou (Sim/Não), 7: Resultado, 8: Analista Geovanny, 9: Analista Rafaella
+        new_cols = ['ID', 'Data', 'Ativo', 'Extra1', 'Periodo', 'Extra2', 'Entrou', 'Resultado', 'Analista Geovanny', 'Analista Rafaella']
         if len(df.columns) >= len(new_cols):
             df.columns = new_cols[:len(df.columns)]
+        elif len(df.columns) == 9:
+            df.columns = new_cols[:9]
         
         # Clean data
         df = df.dropna(subset=['Ativo'])

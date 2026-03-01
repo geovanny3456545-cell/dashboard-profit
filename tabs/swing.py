@@ -166,11 +166,17 @@ def render(df_swing):
                 )
                 st.write(f"**Lado:** {row['Extra1'] if pd.notna(row['Extra1']) else 'N/A'}")
             with col3:
-                st.write("**📝 Observação Principal:**")
-                st.info(row['Obs1'] if pd.notna(row['Obs1']) and row['Obs1'] != '-' else "Sem observações.")
-                if pd.notna(row['Obs2']) and row['Obs2'] != '-':
-                    st.write("**💡 Estratégia/Detalhe:**")
-                    st.success(row['Obs2'])
+                if pd.notna(row['Analista Geovanny']) and str(row['Analista Geovanny']).strip() != '-':
+                    st.write("**👨‍💻 Analista Geovanny:**")
+                    st.info(row['Analista Geovanny'])
+                
+                if pd.notna(row['Analista Rafaella']) and str(row['Analista Rafaella']).strip() != '-':
+                    st.write("**👩‍💻 Analista Rafaella:**")
+                    st.success(row['Analista Rafaella'])
+                
+                if (pd.isna(row['Analista Geovanny']) or str(row['Analista Geovanny']).strip() == '-') and \
+                   (pd.isna(row['Analista Rafaella']) or str(row['Analista Rafaella']).strip() == '-'):
+                    st.info("Sem observações dos analistas.")
 
     st.markdown("---")
 
@@ -185,7 +191,8 @@ def render(df_swing):
         'Periodo': 'Timeframe',
         'Entrou': 'Executou',
         'Resultado': 'Resultado (P/L)',
-        'Obs1': 'Observação'
+        'Analista Geovanny': 'Geovanny',
+        'Analista Rafaella': 'Rafaella'
     })
     
     # Filter out empty/unexecuted only if they are old? 
@@ -193,7 +200,7 @@ def render(df_swing):
     # but in dashboard we just show what exists.
     
     st.dataframe(
-        history_df[['Data', 'Ticker', 'Timeframe', 'Executou', 'Resultado (P/L)', 'Observação']],
+        history_df[['Data', 'Ticker', 'Timeframe', 'Executou', 'Resultado (P/L)', 'Geovanny', 'Rafaella']],
         use_container_width=True,
         hide_index=True
     )

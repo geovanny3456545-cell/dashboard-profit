@@ -212,7 +212,7 @@ df = df_raw[mask].copy()
 metrics = m.calculate_metrics(df)
 
 # --- NAVIGATION ---
-tab_options = ["🏠 Resumo", "📊 Swing Trade", "📢 Mentoria", "📊 Operações", "📈 Gráficos", "🌍 Ativos", "📅 Calendário", "📝 Relatórios"]
+tab_options = ["🏠 Resumo", "📊 Swing Trade", "📢 Mentoria", "⚡ Day Trade", "📈 Gráficos", "🌍 Ativos", "📅 Calendário", "📝 Relatórios"]
 if "selected_main_tab" not in st.session_state: 
     st.session_state.selected_main_tab = "🏠 Resumo"
 else:
@@ -220,7 +220,8 @@ else:
     mapping = {
         "Resumo": "🏠 Resumo",
         "Mentoria": "📢 Mentoria",
-        "Operações": "📊 Operações",
+        "Operações": "⚡ Day Trade",
+        "Day Trade": "⚡ Day Trade",
         "Gráficos": "📈 Gráficos",
         "Ativos": "🌍 Ativos",
         "Calendário": "📅 Calendário",
@@ -243,7 +244,7 @@ elif selected_main_tab == "📊 Swing Trade":
 elif selected_main_tab == "📢 Mentoria":
     mentoria.render()
 
-elif selected_main_tab == "📊 Operações":
+elif selected_main_tab == "⚡ Day Trade":
     operacoes.render(df, metrics)
 
 elif selected_main_tab == "📈 Gráficos":
