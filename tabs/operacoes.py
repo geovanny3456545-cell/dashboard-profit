@@ -76,6 +76,12 @@ def render(df, df_raw):
         # Show all operations
         latest_dt = df.sort_values('Abertura_Dt', ascending=False)
         
+        # Debug: Write first row to a file for investigation
+        if not latest_dt.empty:
+            with open("debug_row.txt", "w", encoding="utf-8") as f:
+                f.write(str(latest_dt.iloc[0].to_dict()))
+                f.write("\nColumns: " + str(latest_dt.columns.tolist()))
+        
         for idx, row in latest_dt.iterrows():
             with st.expander(f"{row['Ativo']} | {row['Abertura']} | Resultado: {row['Res. Operação']}", expanded=True):
                 col1, col2, col3 = st.columns([1.5, 3, 2.5])
