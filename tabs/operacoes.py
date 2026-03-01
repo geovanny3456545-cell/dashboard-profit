@@ -380,7 +380,7 @@ def render_daytrade_sparkline(full_df, entry_dt, exit_dt, entry_px, exit_px, sid
         e_ay = 30 if side == 'C' else -30 # Positive is down in Plotly pixels, so 30 means tail is below -> Points UP
         
         fig.add_annotation(
-            x=entry_dt, y=entry_px + offset,
+            x=entry_dt, y=entry_px,
             text="", showarrow=True, arrowhead=3, arrowsize=1.5, arrowwidth=2, arrowcolor=e_color,
             ax=0, ay=e_ay, ayref='pixel', hovertext=f"Entrada: {entry_px:,.2f}"
         )
@@ -390,22 +390,22 @@ def render_daytrade_sparkline(full_df, entry_dt, exit_dt, entry_px, exit_px, sid
         ex_ay = -30 if side == 'C' else 30 # For Buy trade, exit is Sell -> Points DOWN
         
         fig.add_annotation(
-            x=exit_dt, y=exit_px + offset,
+            x=exit_dt, y=exit_px,
             text="", showarrow=True, arrowhead=3, arrowsize=1.5, arrowwidth=2, arrowcolor=ex_color,
             ax=0, ay=ex_ay, ayref='pixel', hovertext=f"Saída: {exit_px:,.2f}"
         )
         
         # Connect with dashed line
         fig.add_trace(go.Scatter(
-            x=[entry_dt, exit_dt], y=[entry_px + offset, exit_px + offset],
+            x=[entry_dt, exit_dt], y=[entry_px, exit_px],
             mode='lines',
             line=dict(color="rgba(255,255,255,0.4)", width=1, dash="dot"),
             showlegend=False, hoverinfo='skip'
         ))
         
         # Dynamic Zoom
-        y_min = min(df['Low'].min(), entry_px + offset, exit_px + offset) * 0.9997
-        y_max = max(df['High'].max(), entry_px + offset, exit_px + offset) * 1.0003
+        y_min = min(df['Low'].min(), entry_px, exit_px) * 0.9997
+        y_max = max(df['High'].max(), entry_px, exit_px) * 1.0003
 
         fig.update_layout(
             margin=dict(l=0, r=0, t=10, b=0),
