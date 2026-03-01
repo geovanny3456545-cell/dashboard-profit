@@ -283,6 +283,11 @@ def render_daytrade_sparkline(full_df, entry_dt, exit_dt, entry_px, exit_px, sid
         # Slice locally: 1 hour before and after trade
         start = entry_dt - datetime.timedelta(hours=1)
         end = exit_dt + datetime.timedelta(hours=1)
+        
+        # Ensure index is datetime and sorted for slicing
+        if not isinstance(full_df.index, pd.DatetimeIndex):
+            full_df.index = pd.to_datetime(full_df.index)
+        
         df = full_df.loc[start:end].copy()
 
         if df.empty:
@@ -290,19 +295,19 @@ def render_daytrade_sparkline(full_df, entry_dt, exit_dt, entry_px, exit_px, sid
             fig.add_annotation(text="Sem dados 5m", showarrow=False, font=dict(size=10, color="gray"))
             return fig
             
-    # --- ALIGNMENT LOGIC ---
-    # Find the closest market price at entry_dt
-    try:
-        closest_idx = df.index.get_indexer([entry_dt], method='nearest')[0]
-        market_at_entry = df['Close'].iloc[closest_idx]
-        # Calculate offset to bring market price to entry_px
-        offset = entry_px - market_at_entry
-    except:
-        offset = 0
+        # --- ALIGNMENT LOGIC ---
+        # Find the closest market price at entry_dt
+        try:
+            closest_idx = df.index.get_indexer([entry_dt], method='nearest')[0]
+            market_at_entry = df['Close'].iloc[closest_idx]
+            # Calculate offset to bring market price to entry_px
+            offset = entry_px - market_at_entry
+        except:
+            offset = 0
 
-    # Apply offset to all OHLC data
-    for col in ['Open', 'High', 'Low', 'Close']:
-        df[col] = df[col] + offset
+        # Apply offset to all OHLC data
+        for col in ['Open', 'High', 'Low', 'Close']:
+            df[col] = df[col] + offset
     
     df['EMA20'] = df['Close'].ewm(span=20, adjust=True).mean()
     
