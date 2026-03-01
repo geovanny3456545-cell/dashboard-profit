@@ -73,11 +73,41 @@ def render(df, df_raw):
     if not df.empty:
         st.markdown("### 🎯 Foco Principal: Operações Recentes (5m)")
         
-        # Show all operations
-        latest_dt = df.sort_values('Abertura_Dt', ascending=False)
+        # Sort by Date desc
+        sorted_df = df.sort_values('Abertura_Dt', ascending=False)
         
-        for idx, row in latest_dt.iterrows():
-            with st.expander(f"{row['Ativo']} | {row['Abertura']} | Resultado: {row['Res. Operação']}", expanded=True):
+        # --- BATCH DATA FETCHING PER SYMBOL ---
+        unique_proxies = {}
+        for _, row in sorted_df.iterrows():
+            sym = "^BVSP" if "WIN" in str(row['Ativo']).upper() else "USDBRL=X"
+            if sym not in unique_proxies:
+                unique_proxies[sym] = {'start': row['Abertura_Dt'], 'end': row.get('Fechamento_Dt', row['Abertura_Dt'])}
+            else:
+                unique_proxies[sym]['start'] = min(unique_proxies[sym]['start'], row['Abertura_Dt'])
+                unique_proxies[sym]['end'] = max(unique_proxies[sym]['end'], row.get('Fechamento_Dt', row['Abertura_Dt']))
+
+        # Fetch all needed data once per symbol
+        proxy_data = {}
+        for sym, d_range in unique_proxies.items():
+            # Pad range by 2 hours for context
+            p_start = d_range['start'] - datetime.timedelta(hours=2)
+            p_end = d_range['end'] + datetime.timedelta(hours=2)
+            try:
+                import yfinance as yf
+                full_df = yf.download(sym, start=p_start, end=p_end, interval='5m', progress=False)
+                if not full_df.empty:
+                    if isinstance(full_df.columns, pd.MultiIndex):
+                        full_df.columns = [str(c[0]) for c in full_df.columns]
+                    proxy_data[sym] = full_df
+            except:
+                proxy_data[sym] = pd.DataFrame()
+
+        # Render cards
+        for idx, row in sorted_df.iterrows():
+            # Auto-expand only first 5
+            is_expanded = (idx < 5)
+            
+            with st.expander(f"{row['Ativo']} | {row['Abertura']} | Resultado: {row['Res. Operação']}", expanded=is_expanded):
                 col1, col2, col3 = st.columns([1.5, 3, 2.5])
                 
                 with col1:
@@ -87,17 +117,13 @@ def render(df, df_raw):
                     st.caption(f"📅 {row['Abertura']}")
                 
                 with col2:
-                    # Proxy for Index trades
                     symbol_proxy = "^BVSP" if "WIN" in str(row['Ativo']).upper() else "USDBRL=X"
                     st.write(f"**Gráfico 5m ({symbol_proxy})**")
                     
-                    # Determine Entry/Exit Prices based on Side (Robustly)
                     side = str(row.get('Lado', 'C')).strip().upper()
-                    
                     def get_price(p_col_numeric, p_col_raw):
                         val = row.get(p_col_numeric, row.get(p_col_raw, 0))
                         if isinstance(val, str):
-                            # Cleaning fallback
                              val = val.replace('R$', '').replace(' ', '').replace('.', '').replace(',', '.')
                              try: val = float(val)
                              except: val = 0
@@ -105,17 +131,14 @@ def render(df, df_raw):
 
                     p_compra = get_price('Preço Compra Numeric', 'Preço Compra')
                     p_venda = get_price('Preço Venda Numeric', 'Preço Venda')
-                    
                     entry_px = p_compra if side == 'C' else p_venda
                     exit_px = p_venda if side == 'C' else p_compra
                     exit_dt = row.get('Fechamento_Dt', row['Abertura_Dt'])
                     
-                    # Log if prices are 0 for tracing (visible only in streamlit dev or if we st.write)
-                    if entry_px == 0 or exit_px == 0:
-                         st.error(f"⚠️ Erro ao encontrar preço para {row['Ativo']}. Verifique as colunas.")
-
+                    # Pass the pre-fetched data
+                    df_symbol = proxy_data.get(symbol_proxy, pd.DataFrame())
                     fig = render_daytrade_sparkline(
-                        symbol_proxy, 
+                        df_symbol, 
                         row['Abertura_Dt'], 
                         exit_dt, 
                         entry_px, 
@@ -242,94 +265,107 @@ def render(df, df_raw):
             height=600
         )
 
-def render_daytrade_sparkline(symbol, entry_dt, exit_dt, entry_px, exit_px, side):
-    """Generates a 5m candlestick chart with entry/exit markers."""
-    import yfinance as yf
+def render_daytrade_sparkline(full_df, entry_dt, exit_dt, entry_px, exit_px, side):
+    """Generates a 5m candlestick chart aligned with entry price."""
     import numpy as np
     
-    # Range: 1 hour before and after trade for context (narrower than before to see markers better)
+    if full_df.empty:
+        fig = go.Figure()
+        fig.add_annotation(text="Sem dados 5m", showarrow=False, font=dict(size=10, color="gray"))
+        return fig
+
+    # Slice locally: 1 hour before and after trade
     start = entry_dt - datetime.timedelta(hours=1)
     end = exit_dt + datetime.timedelta(hours=1)
-    
-    try:
-        df = yf.download(symbol, start=start, end=end, interval='5m', progress=False)
-        if df.empty:
-            fig = go.Figure()
-            fig.add_annotation(text="Sem dados 5m", showarrow=False, font=dict(size=10, color="gray"))
-            return fig
-            
-        if isinstance(df.columns, pd.MultiIndex):
-            df.columns = [str(c[0]) for c in df.columns]
-        
-        df['EMA20'] = df['Close'].ewm(span=20, adjust=True).mean()
-        
-        color_up = '#00fa9a'
-        color_down = '#ff4d4d'
-        
-        fig = go.Figure(data=[
-            go.Candlestick(
-                x=df.index,
-                open=df['Open'], high=df['High'], low=df['Low'], close=df['Close'],
-                increasing=dict(line=dict(color=color_up), fillcolor=color_up),
-                decreasing=dict(line=dict(color=color_down), fillcolor=color_down),
-                whiskerwidth=0.3,
-                name="Preço"
-            )
-        ])
-        
-        # Add EMA Segments
-        for i in range(1, len(df)):
-            seg_color = color_up if df['Close'].iloc[i] > df['EMA20'].iloc[i] else color_down
-            fig.add_trace(go.Scatter(
-                x=df.index[i-1:i+1], y=df['EMA20'].iloc[i-1:i+1],
-                mode='lines', line=dict(color=seg_color, width=1.5), showlegend=False
-            ))
-            
-        # --- ENTRY/EXIT MARKERS (Profit Style) ---
-        # side 'C' (Buy): Entry is Buy (Up), Exit is Sell (Down)
-        # side 'V' (Sell): Entry is Sell (Down), Exit is Buy (Up)
-        
-        entry_marker = "triangle-up" if side == 'C' else "triangle-down"
-        entry_color = "#00fa9a" if side == 'C' else "#ff4d4d"
-        
-        exit_marker = "triangle-down" if side == 'C' else "triangle-up"
-        exit_color = "#ffcc00" # Yellow for exit/close
-        
-        # Add Entry
-        fig.add_trace(go.Scatter(
-            x=[entry_dt], y=[entry_px],
-            mode='markers',
-            marker=dict(symbol=entry_marker, size=12, color=entry_color, line=dict(width=1, color="white")),
-            name="Entrada",
-            hovertemplate=f"Entrada: {entry_px:.2f}<extra></extra>"
-        ))
-        
-        # Add Exit
-        fig.add_trace(go.Scatter(
-            x=[exit_dt], y=[exit_px],
-            mode='markers',
-            marker=dict(symbol=exit_marker, size=12, color=exit_color, line=dict(width=1, color="white")),
-            name="Saída",
-            hovertemplate=f"Saída: {exit_px:.2f}<extra></extra>"
-        ))
-        
-        # Connect Entry and Exit with a dashed line
-        fig.add_trace(go.Scatter(
-            x=[entry_dt, exit_dt], y=[entry_px, exit_px],
-            mode='lines',
-            line=dict(color="rgba(255,255,255,0.4)", width=1, dash="dot"),
-            showlegend=False,
-            hoverinfo='skip'
-        ))
-        
-        fig.update_layout(
-            margin=dict(l=0, r=0, t=10, b=0),
-            xaxis=dict(visible=False), 
-            yaxis=dict(visible=True, showticklabels=True, tickfont=dict(size=8, color="gray"), side="right"),
-            plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
-            xaxis_rangeslider_visible=False, height=200 # Slightly taller for better view
-        )
+    df = full_df.loc[start:end].copy()
+
+    if df.empty:
+        fig = go.Figure()
+        fig.add_annotation(text="Sem dados 5m", showarrow=False, font=dict(size=10, color="gray"))
         return fig
+            
+    # --- ALIGNMENT LOGIC ---
+    # Find the closest market price at entry_dt
+    try:
+        closest_idx = df.index.get_indexer([entry_dt], method='nearest')[0]
+        market_at_entry = df['Close'].iloc[closest_idx]
+        # Calculate offset to bring market price to entry_px
+        offset = entry_px - market_at_entry
+    except:
+        offset = 0
+
+    # Apply offset to all OHLC data
+    for col in ['Open', 'High', 'Low', 'Close']:
+        df[col] = df[col] + offset
+    
+    df['EMA20'] = df['Close'].ewm(span=20, adjust=True).mean()
+    
+    color_up = '#00fa9a'
+    color_down = '#ff4d4d'
+    
+    fig = go.Figure(data=[
+        go.Candlestick(
+            x=df.index,
+            open=df['Open'], high=df['High'], low=df['Low'], close=df['Close'],
+            increasing=dict(line=dict(color=color_up), fillcolor=color_up),
+            decreasing=dict(line=dict(color=color_down), fillcolor=color_down),
+            whiskerwidth=0.3,
+            name="Preço"
+        )
+    ])
+    
+    # Add EMA Segments
+    for i in range(1, len(df)):
+        seg_color = color_up if df['Close'].iloc[i] > df['EMA20'].iloc[i] else color_down
+        fig.add_trace(go.Scatter(
+            x=df.index[i-1:i+1], y=df['EMA20'].iloc[i-1:i+1],
+            mode='lines', line=dict(color=seg_color, width=1.5), showlegend=False
+        ))
+        
+    # --- ENTRY/EXIT MARKERS ---
+    entry_marker = "triangle-up" if side == 'C' else "triangle-down"
+    entry_color = "#00fa9a" if side == 'C' else "#ff4d4d"
+    exit_marker = "triangle-down" if side == 'C' else "triangle-up"
+    exit_color = "#ffcc00"
+    
+    fig.add_trace(go.Scatter(
+        x=[entry_dt], y=[entry_px],
+        mode='markers',
+        marker=dict(symbol=entry_marker, size=12, color=entry_color, line=dict(width=1, color="white")),
+        name="Entrada",
+        hovertemplate=f"Entrada: {entry_px:,.2f}<extra></extra>"
+    ))
+    
+    fig.add_trace(go.Scatter(
+        x=[exit_dt], y=[exit_px],
+        mode='markers',
+        marker=dict(symbol=exit_marker, size=12, color=exit_color, line=dict(width=1, color="white")),
+        name="Saída",
+        hovertemplate=f"Saída: {exit_px:,.2f}<extra></extra>"
+    ))
+    
+    fig.add_trace(go.Scatter(
+        x=[entry_dt, exit_dt], y=[entry_px, exit_px],
+        mode='lines',
+        line=dict(color="rgba(255,255,255,0.4)", width=1, dash="dot"),
+        showlegend=False, hoverinfo='skip'
+    ))
+    
+    # Calculate Zoom Range
+    y_min = min(df['Low'].min(), entry_px, exit_px) * 0.9997
+    y_max = max(df['High'].max(), entry_px, exit_px) * 1.0003
+
+    fig.update_layout(
+        margin=dict(l=0, r=0, t=10, b=0),
+        xaxis=dict(visible=False), 
+        yaxis=dict(
+            visible=True, showticklabels=True, tickfont=dict(size=8, color="gray"), side="right",
+            range=[y_min, y_max] # Custom Zoom
+        ),
+        plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
+        xaxis_rangeslider_visible=False, height=220
+    )
+    return fig
     except:
         fig = go.Figure()
         return fig
