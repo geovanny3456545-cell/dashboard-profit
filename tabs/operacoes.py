@@ -12,12 +12,8 @@ def get_batch_market_data(proxies_to_fetch):
     """Fetches markert data for multiple symbols in one go with caching."""
     results = {}
     for sym, d_range in proxies_to_fetch.items():
-        # Round starts/ends to day boundaries to improve cache hits
         p_start = d_range['start'].replace(hour=0, minute=0, second=0) - datetime.timedelta(days=1)
         p_end = d_range['end'].replace(hour=23, minute=59, second=59) + datetime.timedelta(days=1)
-        
-        # Debug print (visible in Streamlit logs)
-        st.write(f"🔍 Buscando dados para {sym} de {p_start} até {p_end}")
         
         try:
             df = yf.download(sym, start=p_start, end=p_end, interval='5m', progress=False)
@@ -25,12 +21,9 @@ def get_batch_market_data(proxies_to_fetch):
                 if isinstance(df.columns, pd.MultiIndex):
                     df.columns = [str(c[0]) for c in df.columns]
                 results[sym] = df
-                st.write(f"✅ Sucesso: {len(df)} linhas obtidas para {sym}")
             else:
-                st.write(f"⚠️ Aviso: yfinance retornou DataFrame vazio para {sym}")
                 results[sym] = pd.DataFrame()
-        except Exception as e:
-            st.write(f"❌ Erro ao baixar {sym}: {str(e)}")
+        except:
             results[sym] = pd.DataFrame()
     return results
 
@@ -286,22 +279,29 @@ def render_daytrade_sparkline(full_df, entry_dt, exit_dt, entry_px, exit_px, sid
     try:
         if full_df is None or full_df.empty:
             fig = go.Figure()
-            fig.add_annotation(text="Sem dados 5m", showarrow=False, font=dict(size=10, color="gray"))
+            fig.add_annotation(text="Sem dados de mercado (5m) para este período", showarrow=False, font=dict(size=10, color="gray"))
             return fig
 
+        # --- TIMEZONE ALIGNMENT ---
+        # yfinance 5m data is often TZ-aware. Trades from CSV are naive.
+        # Force EVERYTHING to naive for robust comparison/slicing.
+        working_df = full_df.copy()
+        if working_df.index.tz is not None:
+            working_df.index = working_df.index.tz_localize(None)
+        
+        # Ensure trade datetimes are naive
+        if entry_dt.tzinfo is not None: entry_dt = entry_dt.replace(tzinfo=None)
+        if exit_dt.tzinfo is not None: exit_dt = exit_dt.replace(tzinfo=None)
+
         # Slice locally: 1 hour before and after trade
-        start = entry_dt - datetime.timedelta(hours=1)
-        end = exit_dt + datetime.timedelta(hours=1)
+        start_range = entry_dt - datetime.timedelta(hours=1)
+        end_range = exit_dt + datetime.timedelta(hours=1)
         
-        # Ensure index is datetime and sorted for slicing
-        if not isinstance(full_df.index, pd.DatetimeIndex):
-            full_df.index = pd.to_datetime(full_df.index)
-        
-        df = full_df.loc[start:end].copy()
+        df = working_df.loc[start_range:end_range].copy()
 
         if df.empty:
             fig = go.Figure()
-            fig.add_annotation(text="Sem dados 5m", showarrow=False, font=dict(size=10, color="gray"))
+            fig.add_annotation(text="Sem dados no intervalo selecionado", showarrow=False, font=dict(size=10, color="gray"))
             return fig
             
         # --- ALIGNMENT LOGIC ---
@@ -309,7 +309,6 @@ def render_daytrade_sparkline(full_df, entry_dt, exit_dt, entry_px, exit_px, sid
         try:
             closest_idx = df.index.get_indexer([entry_dt], method='nearest')[0]
             market_at_entry = df['Close'].iloc[closest_idx]
-            # Calculate offset to bring market price to entry_px
             offset = entry_px - market_at_entry
         except:
             offset = 0
@@ -371,7 +370,7 @@ def render_daytrade_sparkline(full_df, entry_dt, exit_dt, entry_px, exit_px, sid
             showlegend=False, hoverinfo='skip'
         ))
         
-        # Calculate Zoom Range
+        # Calculate Dynamic Zoom Range
         y_min = min(df['Low'].min(), entry_px, exit_px) * 0.9997
         y_max = max(df['High'].max(), entry_px, exit_px) * 1.0003
 
@@ -380,7 +379,7 @@ def render_daytrade_sparkline(full_df, entry_dt, exit_dt, entry_px, exit_px, sid
             xaxis=dict(visible=False), 
             yaxis=dict(
                 visible=True, showticklabels=True, tickfont=dict(size=8, color="gray"), side="right",
-                range=[y_min, y_max] # Custom Zoom
+                range=[y_min, y_max]
             ),
             plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
             xaxis_rangeslider_visible=False, height=220
@@ -388,4 +387,5 @@ def render_daytrade_sparkline(full_df, entry_dt, exit_dt, entry_px, exit_px, sid
         return fig
     except Exception as e:
         fig = go.Figure()
+        fig.add_annotation(text=f"Erro no gráfico: {str(e)}", showarrow=False, font=dict(size=10, color="red"))
         return fig
