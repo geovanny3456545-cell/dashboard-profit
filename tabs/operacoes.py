@@ -1,6 +1,9 @@
 import streamlit as st
 import pandas as pd
 import streamlit.components.v1 as components
+import plotly.graph_objects as go
+from utils.data_loader import fetch_real_ohlc
+import datetime
 
 def render(df, df_raw):
     # Calculate performance metrics
@@ -65,6 +68,29 @@ def render(df, df_raw):
     </div>
     """
     st.markdown(html_strip, unsafe_allow_html=True)
+
+    # --- MINI CHARTS (5 MIN) ---
+    if not df.empty:
+        st.markdown("### ⚡ Fluxo de Operações Recentes (5m)")
+        
+        # Get last 4 unique operations to show focus
+        last_ops = df.sort_values('Abertura_Dt', ascending=False).head(4)
+        
+        cols = st.columns(4)
+        for i, (idx, row) in enumerate(last_ops.iterrows()):
+            with cols[i]:
+                # Proxy for Index trades
+                symbol_proxy = "^BVSP" if "WIN" in str(row['Ativo']).upper() else "USDBRL=X"
+                
+                # Fetch 5m data specifically for that trade period
+                from utils.data_loader import fetch_real_ohlc # Re-import or ensure available
+                
+                # We need a new function or param in fetch_real_ohlc for intraday
+                fig = render_daytrade_sparkline(symbol_proxy, row['Abertura_Dt'])
+                
+                st.write(f"**{row['Ativo']}**")
+                st.plotly_chart(fig, config={'displayModeBar': False}, use_container_width=True, key=f"dt_spark_{i}")
+                st.caption(f"Abertura: {row['Abertura']}")
 
     # --- TOP SCROLL BAR COMPONENT ---
     components.html("""
@@ -172,3 +198,62 @@ def render(df, df_raw):
             use_container_width=True,
             height=600
         )
+
+def render_daytrade_sparkline(symbol, trade_dt):
+    """Generates a 5m candlestick chart centered around the trade time."""
+    import yfinance as yf
+    import numpy as np
+    
+    # Range: 2 hours before and after trade for context
+    start = trade_dt - datetime.timedelta(hours=2)
+    end = trade_dt + datetime.timedelta(hours=2)
+    
+    try:
+        df = yf.download(symbol, start=start, end=end, interval='5m', progress=False)
+        if df.empty:
+            # Fallback for old data where yf might fail 5m
+            fig = go.Figure()
+            fig.add_annotation(text="Sem dados 5m", showarrow=False, font=dict(size=10, color="gray"))
+            return fig
+            
+        # Standardize columns
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = [str(c[0]) for c in df.columns]
+        
+        # EMA Color rule
+        df['EMA20'] = df['Close'].ewm(span=20, adjust=True).mean()
+        
+        color_up = '#00fa9a'
+        color_down = '#ff4d4d'
+        
+        fig = go.Figure(data=[
+            go.Candlestick(
+                x=df.index,
+                open=df['Open'], high=df['High'], low=df['Low'], close=df['Close'],
+                increasing=dict(line=dict(color=color_up), fillcolor=color_up),
+                decreasing=dict(line=dict(color=color_down), fillcolor=color_down),
+                whiskerwidth=0.3
+            )
+        ])
+        
+        # Add EMA Segments
+        for i in range(1, len(df)):
+            seg_color = color_up if df['Close'].iloc[i] > df['EMA20'].iloc[i] else color_down
+            fig.add_trace(go.Scatter(
+                x=df.index[i-1:i+1], y=df['EMA20'].iloc[i-1:i+1],
+                mode='lines', line=dict(color=seg_color, width=1.5), showlegend=False
+            ))
+            
+        # Highlight trade time
+        fig.add_vline(x=trade_dt, line_width=1, line_dash="dash", line_color="white")
+        
+        fig.update_layout(
+            margin=dict(l=0, r=0, t=0, b=0),
+            xaxis=dict(visible=False), yaxis=dict(visible=False),
+            plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
+            xaxis_rangeslider_visible=False, height=100
+        )
+        return fig
+    except:
+        fig = go.Figure()
+        return fig
