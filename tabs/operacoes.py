@@ -275,37 +275,41 @@ def render(df, df_raw):
         )
 
 def render_daytrade_sparkline(full_df, entry_dt, exit_dt, entry_px, exit_px, side):
-    """Generates a 5m candlestick chart aligned with entry price."""
+    """Generates a 5m candlestick chart aligned with entry price, handling TZ gaps."""
     try:
         if full_df is None or full_df.empty:
             fig = go.Figure()
-            fig.add_annotation(text="Sem dados de mercado (5m) para este período", showarrow=False, font=dict(size=10, color="gray"))
+            fig.add_annotation(text="Sem dados de mercado (5m)", showarrow=False, font=dict(size=10, color="gray"))
             return fig
 
-        # --- TIMEZONE ALIGNMENT ---
-        # yfinance 5m data is often TZ-aware. Trades from CSV are naive.
-        # Force EVERYTHING to naive for robust comparison/slicing.
+        # --- TIMEZONE & SLICING LOGIC ---
+        # 1. Normalize market data to naive local (BRT is typically UTC-3)
+        # yfinance index usually comes in UTC
         working_df = full_df.copy()
         if working_df.index.tz is not None:
-            working_df.index = working_df.index.tz_localize(None)
+            # Convert to Brazil/Sao_Paulo then strip TZ to match Excel/CSV dates
+            working_df.index = working_df.index.tz_convert('America/Sao_Paulo').tz_localize(None)
         
-        # Ensure trade datetimes are naive
-        if entry_dt.tzinfo is not None: entry_dt = entry_dt.replace(tzinfo=None)
-        if exit_dt.tzinfo is not None: exit_dt = exit_dt.replace(tzinfo=None)
-
-        # Slice locally: 1 hour before and after trade
-        start_range = entry_dt - datetime.timedelta(hours=1)
-        end_range = exit_dt + datetime.timedelta(hours=1)
+        # 2. Slice with a wider window to ensure we catch the data
+        # Increase window to 2 hours before/after to be safe
+        start_range = entry_dt - datetime.timedelta(hours=2)
+        end_range = exit_dt + datetime.timedelta(hours=2)
         
         df = working_df.loc[start_range:end_range].copy()
 
+        # 3. Fallback: If still empty, try to find the 20 closest candles to entry_dt
+        if df.empty:
+            iloc_idx = working_df.index.get_indexer([entry_dt], method='nearest')[0]
+            start_iloc = max(0, iloc_idx - 10)
+            end_iloc = min(len(working_df), iloc_idx + 10)
+            df = working_df.iloc[start_iloc:end_iloc].copy()
+
         if df.empty:
             fig = go.Figure()
-            fig.add_annotation(text="Sem dados no intervalo selecionado", showarrow=False, font=dict(size=10, color="gray"))
+            fig.add_annotation(text="Aguardando dados intraday...", showarrow=False, font=dict(size=10, color="gray"))
             return fig
             
         # --- ALIGNMENT LOGIC ---
-        # Find the closest market price at entry_dt
         try:
             closest_idx = df.index.get_indexer([entry_dt], method='nearest')[0]
             market_at_entry = df['Close'].iloc[closest_idx]
@@ -370,7 +374,7 @@ def render_daytrade_sparkline(full_df, entry_dt, exit_dt, entry_px, exit_px, sid
             showlegend=False, hoverinfo='skip'
         ))
         
-        # Calculate Dynamic Zoom Range
+        # Dynamic Zoom
         y_min = min(df['Low'].min(), entry_px, exit_px) * 0.9997
         y_max = max(df['High'].max(), entry_px, exit_px) * 1.0003
 
@@ -387,5 +391,5 @@ def render_daytrade_sparkline(full_df, entry_dt, exit_dt, entry_px, exit_px, sid
         return fig
     except Exception as e:
         fig = go.Figure()
-        fig.add_annotation(text=f"Erro no gráfico: {str(e)}", showarrow=False, font=dict(size=10, color="red"))
+        fig.add_annotation(text=f"Erro visual: {str(e)}", showarrow=False, font=dict(size=10, color="red"))
         return fig
