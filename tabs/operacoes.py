@@ -4,6 +4,26 @@ import streamlit.components.v1 as components
 import plotly.graph_objects as go
 from utils.data_loader import fetch_real_ohlc
 import datetime
+import yfinance as yf
+import numpy as np
+
+@st.cache_data(ttl=3600)
+def get_batch_market_data(proxies_to_fetch):
+    """Fetches markert data for multiple symbols in one go with caching."""
+    results = {}
+    for sym, d_range in proxies_to_fetch.items():
+        # Round starts/ends to day boundaries to improve cache hits
+        p_start = d_range['start'].replace(hour=0, minute=0, second=0) - datetime.timedelta(days=1)
+        p_end = d_range['end'].replace(hour=23, minute=59, second=59) + datetime.timedelta(days=1)
+        try:
+            df = yf.download(sym, start=p_start, end=p_end, interval='5m', progress=False)
+            if not df.empty:
+                if isinstance(df.columns, pd.MultiIndex):
+                    df.columns = [str(c[0]) for c in df.columns]
+                results[sym] = df
+        except:
+            results[sym] = pd.DataFrame()
+    return results
 
 def render(df, df_raw):
     # Calculate performance metrics
@@ -77,30 +97,17 @@ def render(df, df_raw):
         sorted_df = df.sort_values('Abertura_Dt', ascending=False)
         
         # --- BATCH DATA FETCHING PER SYMBOL ---
-        unique_proxies = {}
+        proxies_to_fetch = {}
         for _, row in sorted_df.iterrows():
             sym = "^BVSP" if "WIN" in str(row['Ativo']).upper() else "USDBRL=X"
-            if sym not in unique_proxies:
-                unique_proxies[sym] = {'start': row['Abertura_Dt'], 'end': row.get('Fechamento_Dt', row['Abertura_Dt'])}
+            if sym not in proxies_to_fetch:
+                proxies_to_fetch[sym] = {'start': row['Abertura_Dt'], 'end': row.get('Fechamento_Dt', row['Abertura_Dt'])}
             else:
-                unique_proxies[sym]['start'] = min(unique_proxies[sym]['start'], row['Abertura_Dt'])
-                unique_proxies[sym]['end'] = max(unique_proxies[sym]['end'], row.get('Fechamento_Dt', row['Abertura_Dt']))
+                proxies_to_fetch[sym]['start'] = min(proxies_to_fetch[sym]['start'], row['Abertura_Dt'])
+                proxies_to_fetch[sym]['end'] = max(proxies_to_fetch[sym]['end'], row.get('Fechamento_Dt', row['Abertura_Dt']))
 
-        # Fetch all needed data once per symbol
-        proxy_data = {}
-        for sym, d_range in unique_proxies.items():
-            # Pad range by 2 hours for context
-            p_start = d_range['start'] - datetime.timedelta(hours=2)
-            p_end = d_range['end'] + datetime.timedelta(hours=2)
-            try:
-                import yfinance as yf
-                full_df = yf.download(sym, start=p_start, end=p_end, interval='5m', progress=False)
-                if not full_df.empty:
-                    if isinstance(full_df.columns, pd.MultiIndex):
-                        full_df.columns = [str(c[0]) for c in full_df.columns]
-                    proxy_data[sym] = full_df
-            except:
-                proxy_data[sym] = pd.DataFrame()
+        # Use the cached batch fetcher
+        proxy_data = get_batch_market_data(proxies_to_fetch)
 
         # Render cards
         for idx, row in sorted_df.iterrows():
@@ -267,23 +274,21 @@ def render(df, df_raw):
 
 def render_daytrade_sparkline(full_df, entry_dt, exit_dt, entry_px, exit_px, side):
     """Generates a 5m candlestick chart aligned with entry price."""
-    import numpy as np
-    
     try:
-        if full_df.empty:
-        fig = go.Figure()
-        fig.add_annotation(text="Sem dados 5m", showarrow=False, font=dict(size=10, color="gray"))
-        return fig
+        if full_df is None or full_df.empty:
+            fig = go.Figure()
+            fig.add_annotation(text="Sem dados 5m", showarrow=False, font=dict(size=10, color="gray"))
+            return fig
 
-    # Slice locally: 1 hour before and after trade
-    start = entry_dt - datetime.timedelta(hours=1)
-    end = exit_dt + datetime.timedelta(hours=1)
-    df = full_df.loc[start:end].copy()
+        # Slice locally: 1 hour before and after trade
+        start = entry_dt - datetime.timedelta(hours=1)
+        end = exit_dt + datetime.timedelta(hours=1)
+        df = full_df.loc[start:end].copy()
 
-    if df.empty:
-        fig = go.Figure()
-        fig.add_annotation(text="Sem dados 5m", showarrow=False, font=dict(size=10, color="gray"))
-        return fig
+        if df.empty:
+            fig = go.Figure()
+            fig.add_annotation(text="Sem dados 5m", showarrow=False, font=dict(size=10, color="gray"))
+            return fig
             
     # --- ALIGNMENT LOGIC ---
     # Find the closest market price at entry_dt
