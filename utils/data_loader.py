@@ -8,8 +8,9 @@ import datetime
 import yfinance as yf
 
 # --- Constants & Config ---
-CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQdgO4JxFa_Unc-Yu4jD-FkbT0Rb5ER1xXXdV16U4tICn6YswWsP4OwqucabYtKJa7NEmq4-Jo82ojz/pub?gid=872600748&single=true&output=csv"
-PATTERN_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQdgO4JxFa_Unc-Yu4jD-FkbT0Rb5ER1xXXdV16U4tICn6YswWsP4OwqucabYtKJa7NEmq4-Jo82ojz/pub?gid=2017205813&single=true&output=csv"
+# --- Constants & Config from Secrets ---
+CSV_URL = st.secrets.get("CSV_URL", "https://docs.google.com/spreadsheets/d/e/2PACX-1vQdgO4JxFa_Unc-Yu4jD-FkbT0Rb5ER1xXXdV16U4tICn6YswWsP4OwqucabYtKJa7NEmq4-Jo82ojz/pub?gid=872600748&single=true&output=csv")
+PATTERN_URL = st.secrets.get("PATTERN_URL", "https://docs.google.com/spreadsheets/d/e/2PACX-1vQdgO4JxFa_Unc-Yu4jD-FkbT0Rb5ER1xXXdV16U4tICn6YswWsP4OwqucabYtKJa7NEmq4-Jo82ojz/pub?gid=2017205813&single=true&output=csv")
 
 def load_data():
     """Main entry for unified data loading with multi-layer caching."""
@@ -253,7 +254,7 @@ def load_pattern_data():
 @st.cache_data(ttl=1)
 def load_swing_trade_data():
     """Fetches and processes Swing Trade specific data."""
-    SWING_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQdgO4JxFa_Unc-Yu4jD-FkbT0Rb5ER1xXXdV16U4tICn6YswWsP4OwqucabYtKJa7NEmq4-Jo82ojz/pub?gid=1798886578&single=true&output=csv"
+    SWING_URL = st.secrets.get("SWING_URL", "https://docs.google.com/spreadsheets/d/e/2PACX-1vQdgO4JxFa_Unc-Yu4jD-FkbT0Rb5ER1xXXdV16U4tICn6YswWsP4OwqucabYtKJa7NEmq4-Jo82ojz/pub?gid=1798886578&single=true&output=csv")
     try:
         content = _get_raw_content(SWING_URL)
         if not content: return pd.DataFrame()
