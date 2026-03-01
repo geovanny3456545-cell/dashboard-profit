@@ -76,12 +76,6 @@ def render(df, df_raw):
         # Show all operations
         latest_dt = df.sort_values('Abertura_Dt', ascending=False)
         
-        # Debug: Write first row to a file for investigation
-        if not latest_dt.empty:
-            with open("debug_row.txt", "w", encoding="utf-8") as f:
-                f.write(str(latest_dt.iloc[0].to_dict()))
-                f.write("\nColumns: " + str(latest_dt.columns.tolist()))
-        
         for idx, row in latest_dt.iterrows():
             with st.expander(f"{row['Ativo']} | {row['Abertura']} | Resultado: {row['Res. Operação']}", expanded=True):
                 col1, col2, col3 = st.columns([1.5, 3, 2.5])
@@ -97,16 +91,29 @@ def render(df, df_raw):
                     symbol_proxy = "^BVSP" if "WIN" in str(row['Ativo']).upper() else "USDBRL=X"
                     st.write(f"**Gráfico 5m ({symbol_proxy})**")
                     
-                    # Determine Entry/Exit Prices based on Side
+                    # Determine Entry/Exit Prices based on Side (Robustly)
                     side = str(row.get('Lado', 'C')).strip().upper()
                     
-                    p_compra = row.get('Preço Compra Numeric', 0)
-                    p_venda = row.get('Preço Venda Numeric', 0)
+                    def get_price(p_col_numeric, p_col_raw):
+                        val = row.get(p_col_numeric, row.get(p_col_raw, 0))
+                        if isinstance(val, str):
+                            # Cleaning fallback
+                             val = val.replace('R$', '').replace(' ', '').replace('.', '').replace(',', '.')
+                             try: val = float(val)
+                             except: val = 0
+                        return val
+
+                    p_compra = get_price('Preço Compra Numeric', 'Preço Compra')
+                    p_venda = get_price('Preço Venda Numeric', 'Preço Venda')
                     
                     entry_px = p_compra if side == 'C' else p_venda
                     exit_px = p_venda if side == 'C' else p_compra
                     exit_dt = row.get('Fechamento_Dt', row['Abertura_Dt'])
                     
+                    # Log if prices are 0 for tracing (visible only in streamlit dev or if we st.write)
+                    if entry_px == 0 or exit_px == 0:
+                         st.error(f"⚠️ Erro ao encontrar preço para {row['Ativo']}. Verifique as colunas.")
+
                     fig = render_daytrade_sparkline(
                         symbol_proxy, 
                         row['Abertura_Dt'], 
@@ -317,9 +324,10 @@ def render_daytrade_sparkline(symbol, entry_dt, exit_dt, entry_px, exit_px, side
         
         fig.update_layout(
             margin=dict(l=0, r=0, t=10, b=0),
-            xaxis=dict(visible=False), yaxis=dict(visible=False),
+            xaxis=dict(visible=False), 
+            yaxis=dict(visible=True, showticklabels=True, tickfont=dict(size=8, color="gray"), side="right"),
             plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
-            xaxis_rangeslider_visible=False, height=150 # Slightly taller to see markers
+            xaxis_rangeslider_visible=False, height=200 # Slightly taller for better view
         )
         return fig
     except:
