@@ -73,8 +73,8 @@ def render(df, df_raw):
     if not df.empty:
         st.markdown("### 🎯 Foco Principal: Operações Recentes (5m)")
         
-        # Get last 5 operations
-        latest_dt = df.sort_values('Abertura_Dt', ascending=False).head(5)
+        # Show all operations
+        latest_dt = df.sort_values('Abertura_Dt', ascending=False)
         
         for idx, row in latest_dt.iterrows():
             with st.expander(f"{row['Ativo']} | {row['Abertura']} | Resultado: {row['Res. Operação']}", expanded=True):
@@ -91,7 +91,26 @@ def render(df, df_raw):
                     symbol_proxy = "^BVSP" if "WIN" in str(row['Ativo']).upper() else "USDBRL=X"
                     st.write(f"**Gráfico 5m ({symbol_proxy})**")
                     
-                    fig = render_daytrade_sparkline(symbol_proxy, row['Abertura_Dt'])
+                    # Determine Entry/Exit Prices based on Side
+                    side = str(row.get('Lado', 'C')).strip().upper()
+                    try:
+                        p_compra = float(str(row.get('Preço Compra', 0)).replace(',', '.'))
+                        p_venda = float(str(row.get('Preço Venda', 0)).replace(',', '.'))
+                    except:
+                        p_compra, p_venda = 0, 0
+                    
+                    entry_px = p_compra if side == 'C' else p_venda
+                    exit_px = p_venda if side == 'C' else p_compra
+                    exit_dt = row.get('Fechamento_Dt', row['Abertura_Dt'])
+                    
+                    fig = render_daytrade_sparkline(
+                        symbol_proxy, 
+                        row['Abertura_Dt'], 
+                        exit_dt, 
+                        entry_px, 
+                        exit_px, 
+                        side
+                    )
                     st.plotly_chart(fig, config={'displayModeBar': False}, use_container_width=True, key=f"dt_card_chart_{idx}")
                 
                 with col3:
@@ -212,28 +231,25 @@ def render(df, df_raw):
             height=600
         )
 
-def render_daytrade_sparkline(symbol, trade_dt):
-    """Generates a 5m candlestick chart centered around the trade time."""
+def render_daytrade_sparkline(symbol, entry_dt, exit_dt, entry_px, exit_px, side):
+    """Generates a 5m candlestick chart with entry/exit markers."""
     import yfinance as yf
     import numpy as np
     
-    # Range: 2 hours before and after trade for context
-    start = trade_dt - datetime.timedelta(hours=2)
-    end = trade_dt + datetime.timedelta(hours=2)
+    # Range: 1 hour before and after trade for context (narrower than before to see markers better)
+    start = entry_dt - datetime.timedelta(hours=1)
+    end = exit_dt + datetime.timedelta(hours=1)
     
     try:
         df = yf.download(symbol, start=start, end=end, interval='5m', progress=False)
         if df.empty:
-            # Fallback for old data where yf might fail 5m
             fig = go.Figure()
             fig.add_annotation(text="Sem dados 5m", showarrow=False, font=dict(size=10, color="gray"))
             return fig
             
-        # Standardize columns
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = [str(c[0]) for c in df.columns]
         
-        # EMA Color rule
         df['EMA20'] = df['Close'].ewm(span=20, adjust=True).mean()
         
         color_up = '#00fa9a'
@@ -245,7 +261,8 @@ def render_daytrade_sparkline(symbol, trade_dt):
                 open=df['Open'], high=df['High'], low=df['Low'], close=df['Close'],
                 increasing=dict(line=dict(color=color_up), fillcolor=color_up),
                 decreasing=dict(line=dict(color=color_down), fillcolor=color_down),
-                whiskerwidth=0.3
+                whiskerwidth=0.3,
+                name="Preço"
             )
         ])
         
@@ -257,14 +274,48 @@ def render_daytrade_sparkline(symbol, trade_dt):
                 mode='lines', line=dict(color=seg_color, width=1.5), showlegend=False
             ))
             
-        # Highlight trade time
-        fig.add_vline(x=trade_dt, line_width=1, line_dash="dash", line_color="white")
+        # --- ENTRY/EXIT MARKERS (Profit Style) ---
+        # side 'C' (Buy): Entry is Buy (Up), Exit is Sell (Down)
+        # side 'V' (Sell): Entry is Sell (Down), Exit is Buy (Up)
+        
+        entry_marker = "triangle-up" if side == 'C' else "triangle-down"
+        entry_color = "#00fa9a" if side == 'C' else "#ff4d4d"
+        
+        exit_marker = "triangle-down" if side == 'C' else "triangle-up"
+        exit_color = "#ffcc00" # Yellow for exit/close
+        
+        # Add Entry
+        fig.add_trace(go.Scatter(
+            x=[entry_dt], y=[entry_px],
+            mode='markers',
+            marker=dict(symbol=entry_marker, size=12, color=entry_color, line=dict(width=1, color="white")),
+            name="Entrada",
+            hovertemplate=f"Entrada: {entry_px:.2f}<extra></extra>"
+        ))
+        
+        # Add Exit
+        fig.add_trace(go.Scatter(
+            x=[exit_dt], y=[exit_px],
+            mode='markers',
+            marker=dict(symbol=exit_marker, size=12, color=exit_color, line=dict(width=1, color="white")),
+            name="Saída",
+            hovertemplate=f"Saída: {exit_px:.2f}<extra></extra>"
+        ))
+        
+        # Connect Entry and Exit with a dashed line
+        fig.add_trace(go.Scatter(
+            x=[entry_dt, exit_dt], y=[entry_px, exit_px],
+            mode='lines',
+            line=dict(color="rgba(255,255,255,0.4)", width=1, dash="dot"),
+            showlegend=False,
+            hoverinfo='skip'
+        ))
         
         fig.update_layout(
-            margin=dict(l=0, r=0, t=0, b=0),
+            margin=dict(l=0, r=0, t=10, b=0),
             xaxis=dict(visible=False), yaxis=dict(visible=False),
             plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
-            xaxis_rangeslider_visible=False, height=100
+            xaxis_rangeslider_visible=False, height=150 # Slightly taller to see markers
         )
         return fig
     except:
