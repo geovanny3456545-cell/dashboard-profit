@@ -93,11 +93,9 @@ def render(df, df_raw):
                     
                     # Determine Entry/Exit Prices based on Side
                     side = str(row.get('Lado', 'C')).strip().upper()
-                    try:
-                        p_compra = float(str(row.get('Preço Compra', 0)).replace(',', '.'))
-                        p_venda = float(str(row.get('Preço Venda', 0)).replace(',', '.'))
-                    except:
-                        p_compra, p_venda = 0, 0
+                    
+                    p_compra = row.get('Preço Compra Numeric', 0)
+                    p_venda = row.get('Preço Venda Numeric', 0)
                     
                     entry_px = p_compra if side == 'C' else p_venda
                     exit_px = p_venda if side == 'C' else p_compra

@@ -148,6 +148,9 @@ def _load_performance_report():
             elif 'fechamento' in cl and 'hora' not in cl: name_map[c] = 'Fechamento'
             elif 'res' in cl and 'bruto' in cl: name_map[c] = 'Res. Intervalo Bruto'
             elif 'lado' in cl: name_map[c] = 'Lado'
+            elif 'preço' in cl and 'compra' in cl.replace(',', ' '): name_map[c] = 'Preço Compra'
+            elif 'preço' in cl and 'venda' in cl.replace(',', ' '): name_map[c] = 'Preço Venda'
+            elif 'médio' in cl: name_map[c] = 'Médio'
             elif 'qtd' in cl and not found_qtd:
                 # Map only the FIRST Qtd-related column found to 'Qtd'
                 # ProfitPro typically has Qtd Compra followed by Qtd Venda
@@ -163,6 +166,8 @@ def _load_performance_report():
             df['Date'] = df['Abertura_Dt'].dt.date
         
         if 'Fechamento' in df.columns:
+            # Clean possible artifacts like extra quotes from CSV parsing
+            df['Fechamento'] = df['Fechamento'].str.replace('"', '', regex=False)
             df['Fechamento_Dt'] = pd.to_datetime(df['Fechamento'].str.replace(',', ' ', regex=False), dayfirst=True, errors='coerce')
             df['Duration_Calc'] = df['Fechamento_Dt'] - df['Abertura_Dt']
         
@@ -177,6 +182,11 @@ def _load_performance_report():
             df['Res_Numeric'] = clean_series(df['Res. Intervalo Bruto'])
         else:
             df['Res_Numeric'] = 0.0
+
+        if 'Preço Compra' in df.columns:
+            df['Preço Compra Numeric'] = clean_series(df['Preço Compra'])
+        if 'Preço Venda' in df.columns:
+            df['Preço Venda Numeric'] = clean_series(df['Preço Venda'])
 
         # Balanced Qtd mapping (Avoid double-counting)
         if 'Qtd' in df.columns and 'Qtd Venda' in df.columns:
