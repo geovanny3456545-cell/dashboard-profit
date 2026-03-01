@@ -130,6 +130,7 @@ def render(df, df_raw):
                     st.write(f"**Gráfico 5m ({symbol_proxy})**")
                     
                     side = str(row.get('Lado', 'C')).strip().upper()
+                    
                     def get_price(p_col_numeric, p_col_raw):
                         val = row.get(p_col_numeric, row.get(p_col_raw, 0))
                         if isinstance(val, str):
@@ -140,8 +141,32 @@ def render(df, df_raw):
 
                     p_compra = get_price('Preço Compra Numeric', 'Preço Compra')
                     p_venda = get_price('Preço Venda Numeric', 'Preço Venda')
-                    entry_px = p_compra if side == 'C' else p_venda
-                    exit_px = p_venda if side == 'C' else p_compra
+                    p_medio = get_price('Médio Numeric', 'Médio')
+                    
+                    # Robust assignment
+                    if side == 'C':
+                        entry_px = p_compra if p_compra > 0 else p_medio
+                        exit_px = p_venda
+                    else:
+                        entry_px = p_venda if p_venda > 0 else p_medio
+                        exit_px = p_compra
+
+                    # Fallback: Calculate missing price from P&L if necessary
+                    res_bruto = row.get('Res_Numeric', 0)
+                    qtd = max(1, int(row.get('Qtd_Clean', 1)))
+                    
+                    # Multipliers: WIN/IND = 0.2, WDO/DOL = 10/50
+                    mult = 0.2 if 'W' in str(row['Ativo']).upper() or 'I' in str(row['Ativo']).upper() else 1.0
+                    if 'WDO' in str(row['Ativo']).upper() or 'DOL' in str(row['Ativo']).upper():
+                        mult = 10.0 if 'WDO' in str(row['Ativo']).upper() else 50.0
+
+                    if entry_px > 0 and (exit_px == 0 or abs(exit_px - entry_px) > entry_px * 0.1):
+                        # If exit_px is 0 or suspiciously far, derive it
+                        # Res = (Exit - Entry) * Qtd * Mult (for Long)
+                        # Res = (Entry - Exit) * Qtd * Mult (for Short)
+                        points = res_bruto / (qtd * mult)
+                        exit_px = entry_px + points if side == 'C' else entry_px - points
+                    
                     exit_dt = row.get('Fechamento_Dt', row['Abertura_Dt'])
                     
                     # Pass the pre-fetched data
@@ -345,57 +370,42 @@ def render_daytrade_sparkline(full_df, entry_dt, exit_dt, entry_px, exit_px, sid
                 mode='lines', line=dict(color=seg_color, width=1.5), showlegend=False
             ))
             
-        # --- ENTRY/EXIT MARKERS (Precision Alignment) ---
-        # We calculate a small offset so the TIP of the triangle touches the price.
-        # Upward triangle peak is at top, Downward triangle peak is at bottom.
-        y_range = df['High'].max() - df['Low'].min()
-        mark_offset = y_range * 0.008 if y_range > 0 else 0
+        # --- ENTRY/EXIT MARKERS (Precision Arrows) ---
+        # We use annotations to ensure the arrow tip points EXACTLY to the price.
+        # side 'C': Entry is BUY (Arrow points UP), Exit is SELL (Arrow points DOWN)
+        # side 'V': Entry is SELL (Arrow points DOWN), Exit is BUY (Arrow points UP)
         
-        # Entry Logic
-        if side == 'C': # Buy Entry
-            e_mark = "triangle-up"
-            e_pos = entry_px - mark_offset
-            e_color = "#00fa9a"
-        else: # Sell Entry
-            e_mark = "triangle-down"
-            e_pos = entry_px + mark_offset
-            e_color = "#ff4d4d"
-            
-        # Exit Logic
-        if side == 'C': # Closing Buy (Selling)
-            ex_mark = "triangle-down"
-            ex_pos = exit_px + mark_offset
-        else: # Closing Sell (Buying)
-            ex_mark = "triangle-up"
-            ex_pos = exit_px - mark_offset
+        # Entry Arrow
+        e_color = "#00fa9a" if side == 'C' else "#ff4d4d"
+        e_ay = 30 if side == 'C' else -30 # Positive is down in Plotly pixels, so 30 means tail is below -> Points UP
+        
+        fig.add_annotation(
+            x=entry_dt, y=entry_px + offset,
+            text="", showarrow=True, arrowhead=3, arrowsize=1.5, arrowwidth=2, arrowcolor=e_color,
+            ax=0, ay=e_ay, ayref='pixel', hovertext=f"Entrada: {entry_px:,.2f}"
+        )
+        
+        # Exit Arrow
         ex_color = "#ffcc00"
+        ex_ay = -30 if side == 'C' else 30 # For Buy trade, exit is Sell -> Points DOWN
         
-        fig.add_trace(go.Scatter(
-            x=[entry_dt], y=[e_pos],
-            mode='markers',
-            marker=dict(symbol=e_mark, size=14, color=e_color, line=dict(width=1, color="white")),
-            name="Entrada",
-            hovertemplate=f"Entrada: {entry_px:,.2f}<extra></extra>"
-        ))
+        fig.add_annotation(
+            x=exit_dt, y=exit_px + offset,
+            text="", showarrow=True, arrowhead=3, arrowsize=1.5, arrowwidth=2, arrowcolor=ex_color,
+            ax=0, ay=ex_ay, ayref='pixel', hovertext=f"Saída: {exit_px:,.2f}"
+        )
         
+        # Connect with dashed line
         fig.add_trace(go.Scatter(
-            x=[exit_dt], y=[ex_pos],
-            mode='markers',
-            marker=dict(symbol=ex_mark, size=14, color=ex_color, line=dict(width=1, color="white")),
-            name="Saída",
-            hovertemplate=f"Saída: {exit_px:,.2f}<extra></extra>"
-        ))
-        
-        fig.add_trace(go.Scatter(
-            x=[entry_dt, exit_dt], y=[entry_px, exit_px],
+            x=[entry_dt, exit_dt], y=[entry_px + offset, exit_px + offset],
             mode='lines',
             line=dict(color="rgba(255,255,255,0.4)", width=1, dash="dot"),
             showlegend=False, hoverinfo='skip'
         ))
         
-        # Dynamic Zoom (Maintaining current logic but ensuring markers are covered)
-        y_min = min(df['Low'].min(), entry_px, exit_px, e_pos, ex_pos) * 0.9997
-        y_max = max(df['High'].max(), entry_px, exit_px, e_pos, ex_pos) * 1.0003
+        # Dynamic Zoom
+        y_min = min(df['Low'].min(), entry_px + offset, exit_px + offset) * 0.9997
+        y_max = max(df['High'].max(), entry_px + offset, exit_px + offset) * 1.0003
 
         fig.update_layout(
             margin=dict(l=0, r=0, t=10, b=0),
