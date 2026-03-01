@@ -269,7 +269,8 @@ def render_daytrade_sparkline(full_df, entry_dt, exit_dt, entry_px, exit_px, sid
     """Generates a 5m candlestick chart aligned with entry price."""
     import numpy as np
     
-    if full_df.empty:
+    try:
+        if full_df.empty:
         fig = go.Figure()
         fig.add_annotation(text="Sem dados 5m", showarrow=False, font=dict(size=10, color="gray"))
         return fig
