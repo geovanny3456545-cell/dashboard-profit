@@ -69,28 +69,41 @@ def render(df, df_raw):
     """
     st.markdown(html_strip, unsafe_allow_html=True)
 
-    # --- MINI CHARTS (5 MIN) ---
+    # --- RECENT OPERATIONS CARDS (Horizontal Layout) ---
     if not df.empty:
-        st.markdown("### ⚡ Fluxo de Operações Recentes (5m)")
+        st.markdown("### 🎯 Foco Principal: Operações Recentes (5m)")
         
-        # Get last 4 unique operations to show focus
-        last_ops = df.sort_values('Abertura_Dt', ascending=False).head(4)
+        # Get last 5 operations
+        latest_dt = df.sort_values('Abertura_Dt', ascending=False).head(5)
         
-        cols = st.columns(4)
-        for i, (idx, row) in enumerate(last_ops.iterrows()):
-            with cols[i]:
-                # Proxy for Index trades
-                symbol_proxy = "^BVSP" if "WIN" in str(row['Ativo']).upper() else "USDBRL=X"
+        for idx, row in latest_dt.iterrows():
+            with st.expander(f"{row['Ativo']} | {row['Abertura']} | Resultado: {row['Res. Operação']}", expanded=True):
+                col1, col2, col3 = st.columns([1.5, 3, 2.5])
                 
-                # Fetch 5m data specifically for that trade period
-                from utils.data_loader import fetch_real_ohlc # Re-import or ensure available
+                with col1:
+                    st.metric("Ativo", row['Ativo'])
+                    st.write(f"**Lado:** {row['Lado']}")
+                    st.write(f"**Qtd:** {row['Qtd']}")
+                    st.caption(f"📅 {row['Abertura']}")
                 
-                # We need a new function or param in fetch_real_ohlc for intraday
-                fig = render_daytrade_sparkline(symbol_proxy, row['Abertura_Dt'])
+                with col2:
+                    # Proxy for Index trades
+                    symbol_proxy = "^BVSP" if "WIN" in str(row['Ativo']).upper() else "USDBRL=X"
+                    st.write(f"**Gráfico 5m ({symbol_proxy})**")
+                    
+                    fig = render_daytrade_sparkline(symbol_proxy, row['Abertura_Dt'])
+                    st.plotly_chart(fig, config={'displayModeBar': False}, use_container_width=True, key=f"dt_card_chart_{idx}")
                 
-                st.write(f"**{row['Ativo']}**")
-                st.plotly_chart(fig, config={'displayModeBar': False}, use_container_width=True, key=f"dt_spark_{i}")
-                st.caption(f"Abertura: {row['Abertura']}")
+                with col3:
+                    st.write("**📊 Detalhes da Execução:**")
+                    st.write(f"- **Preço Médio:** {row['Médio']}")
+                    st.write(f"- **Resultado Bruto:** {row['Res. Intervalo Bruto']}")
+                    res_val = row['Res_Numeric']
+                    res_color = "green" if res_val > 0 else "red" if res_val < 0 else "gray"
+                    st.markdown(f"- **P/L Final:** :{res_color}[{row['Res. Operação']}]")
+                    st.write(f"- **Tempo:** {row['Tempo Operação']}")
+
+    st.markdown("---")
 
     # --- TOP SCROLL BAR COMPONENT ---
     components.html("""
