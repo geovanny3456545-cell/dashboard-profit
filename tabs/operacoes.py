@@ -308,75 +308,75 @@ def render_daytrade_sparkline(full_df, entry_dt, exit_dt, entry_px, exit_px, sid
         # Apply offset to all OHLC data
         for col in ['Open', 'High', 'Low', 'Close']:
             df[col] = df[col] + offset
-    
-    df['EMA20'] = df['Close'].ewm(span=20, adjust=True).mean()
-    
-    color_up = '#00fa9a'
-    color_down = '#ff4d4d'
-    
-    fig = go.Figure(data=[
-        go.Candlestick(
-            x=df.index,
-            open=df['Open'], high=df['High'], low=df['Low'], close=df['Close'],
-            increasing=dict(line=dict(color=color_up), fillcolor=color_up),
-            decreasing=dict(line=dict(color=color_down), fillcolor=color_down),
-            whiskerwidth=0.3,
-            name="Preço"
-        )
-    ])
-    
-    # Add EMA Segments
-    for i in range(1, len(df)):
-        seg_color = color_up if df['Close'].iloc[i] > df['EMA20'].iloc[i] else color_down
+        
+        df['EMA20'] = df['Close'].ewm(span=20, adjust=True).mean()
+        
+        color_up = '#00fa9a'
+        color_down = '#ff4d4d'
+        
+        fig = go.Figure(data=[
+            go.Candlestick(
+                x=df.index,
+                open=df['Open'], high=df['High'], low=df['Low'], close=df['Close'],
+                increasing=dict(line=dict(color=color_up), fillcolor=color_up),
+                decreasing=dict(line=dict(color=color_down), fillcolor=color_down),
+                whiskerwidth=0.3,
+                name="Preço"
+            )
+        ])
+        
+        # Add EMA Segments
+        for i in range(1, len(df)):
+            seg_color = color_up if df['Close'].iloc[i] > df['EMA20'].iloc[i] else color_down
+            fig.add_trace(go.Scatter(
+                x=df.index[i-1:i+1], y=df['EMA20'].iloc[i-1:i+1],
+                mode='lines', line=dict(color=seg_color, width=1.5), showlegend=False
+            ))
+            
+        # --- ENTRY/EXIT MARKERS ---
+        entry_marker = "triangle-up" if side == 'C' else "triangle-down"
+        entry_color = "#00fa9a" if side == 'C' else "#ff4d4d"
+        exit_marker = "triangle-down" if side == 'C' else "triangle-up"
+        exit_color = "#ffcc00"
+        
         fig.add_trace(go.Scatter(
-            x=df.index[i-1:i+1], y=df['EMA20'].iloc[i-1:i+1],
-            mode='lines', line=dict(color=seg_color, width=1.5), showlegend=False
+            x=[entry_dt], y=[entry_px],
+            mode='markers',
+            marker=dict(symbol=entry_marker, size=12, color=entry_color, line=dict(width=1, color="white")),
+            name="Entrada",
+            hovertemplate=f"Entrada: {entry_px:,.2f}<extra></extra>"
         ))
         
-    # --- ENTRY/EXIT MARKERS ---
-    entry_marker = "triangle-up" if side == 'C' else "triangle-down"
-    entry_color = "#00fa9a" if side == 'C' else "#ff4d4d"
-    exit_marker = "triangle-down" if side == 'C' else "triangle-up"
-    exit_color = "#ffcc00"
-    
-    fig.add_trace(go.Scatter(
-        x=[entry_dt], y=[entry_px],
-        mode='markers',
-        marker=dict(symbol=entry_marker, size=12, color=entry_color, line=dict(width=1, color="white")),
-        name="Entrada",
-        hovertemplate=f"Entrada: {entry_px:,.2f}<extra></extra>"
-    ))
-    
-    fig.add_trace(go.Scatter(
-        x=[exit_dt], y=[exit_px],
-        mode='markers',
-        marker=dict(symbol=exit_marker, size=12, color=exit_color, line=dict(width=1, color="white")),
-        name="Saída",
-        hovertemplate=f"Saída: {exit_px:,.2f}<extra></extra>"
-    ))
-    
-    fig.add_trace(go.Scatter(
-        x=[entry_dt, exit_dt], y=[entry_px, exit_px],
-        mode='lines',
-        line=dict(color="rgba(255,255,255,0.4)", width=1, dash="dot"),
-        showlegend=False, hoverinfo='skip'
-    ))
-    
-    # Calculate Zoom Range
-    y_min = min(df['Low'].min(), entry_px, exit_px) * 0.9997
-    y_max = max(df['High'].max(), entry_px, exit_px) * 1.0003
+        fig.add_trace(go.Scatter(
+            x=[exit_dt], y=[exit_px],
+            mode='markers',
+            marker=dict(symbol=exit_marker, size=12, color=exit_color, line=dict(width=1, color="white")),
+            name="Saída",
+            hovertemplate=f"Saída: {exit_px:,.2f}<extra></extra>"
+        ))
+        
+        fig.add_trace(go.Scatter(
+            x=[entry_dt, exit_dt], y=[entry_px, exit_px],
+            mode='lines',
+            line=dict(color="rgba(255,255,255,0.4)", width=1, dash="dot"),
+            showlegend=False, hoverinfo='skip'
+        ))
+        
+        # Calculate Zoom Range
+        y_min = min(df['Low'].min(), entry_px, exit_px) * 0.9997
+        y_max = max(df['High'].max(), entry_px, exit_px) * 1.0003
 
-    fig.update_layout(
-        margin=dict(l=0, r=0, t=10, b=0),
-        xaxis=dict(visible=False), 
-        yaxis=dict(
-            visible=True, showticklabels=True, tickfont=dict(size=8, color="gray"), side="right",
-            range=[y_min, y_max] # Custom Zoom
-        ),
-        plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
-        xaxis_rangeslider_visible=False, height=220
-    )
-    return fig
-    except:
+        fig.update_layout(
+            margin=dict(l=0, r=0, t=10, b=0),
+            xaxis=dict(visible=False), 
+            yaxis=dict(
+                visible=True, showticklabels=True, tickfont=dict(size=8, color="gray"), side="right",
+                range=[y_min, y_max] # Custom Zoom
+            ),
+            plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
+            xaxis_rangeslider_visible=False, height=220
+        )
+        return fig
+    except Exception as e:
         fig = go.Figure()
         return fig
