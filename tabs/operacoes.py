@@ -345,24 +345,43 @@ def render_daytrade_sparkline(full_df, entry_dt, exit_dt, entry_px, exit_px, sid
                 mode='lines', line=dict(color=seg_color, width=1.5), showlegend=False
             ))
             
-        # --- ENTRY/EXIT MARKERS ---
-        entry_marker = "triangle-up" if side == 'C' else "triangle-down"
-        entry_color = "#00fa9a" if side == 'C' else "#ff4d4d"
-        exit_marker = "triangle-down" if side == 'C' else "triangle-up"
-        exit_color = "#ffcc00"
+        # --- ENTRY/EXIT MARKERS (Precision Alignment) ---
+        # We calculate a small offset so the TIP of the triangle touches the price.
+        # Upward triangle peak is at top, Downward triangle peak is at bottom.
+        y_range = df['High'].max() - df['Low'].min()
+        mark_offset = y_range * 0.008 if y_range > 0 else 0
+        
+        # Entry Logic
+        if side == 'C': # Buy Entry
+            e_mark = "triangle-up"
+            e_pos = entry_px - mark_offset
+            e_color = "#00fa9a"
+        else: # Sell Entry
+            e_mark = "triangle-down"
+            e_pos = entry_px + mark_offset
+            e_color = "#ff4d4d"
+            
+        # Exit Logic
+        if side == 'C': # Closing Buy (Selling)
+            ex_mark = "triangle-down"
+            ex_pos = exit_px + mark_offset
+        else: # Closing Sell (Buying)
+            ex_mark = "triangle-up"
+            ex_pos = exit_px - mark_offset
+        ex_color = "#ffcc00"
         
         fig.add_trace(go.Scatter(
-            x=[entry_dt], y=[entry_px],
+            x=[entry_dt], y=[e_pos],
             mode='markers',
-            marker=dict(symbol=entry_marker, size=12, color=entry_color, line=dict(width=1, color="white")),
+            marker=dict(symbol=e_mark, size=14, color=e_color, line=dict(width=1, color="white")),
             name="Entrada",
             hovertemplate=f"Entrada: {entry_px:,.2f}<extra></extra>"
         ))
         
         fig.add_trace(go.Scatter(
-            x=[exit_dt], y=[exit_px],
+            x=[exit_dt], y=[ex_pos],
             mode='markers',
-            marker=dict(symbol=exit_marker, size=12, color=exit_color, line=dict(width=1, color="white")),
+            marker=dict(symbol=ex_mark, size=14, color=ex_color, line=dict(width=1, color="white")),
             name="Saída",
             hovertemplate=f"Saída: {exit_px:,.2f}<extra></extra>"
         ))
@@ -374,9 +393,9 @@ def render_daytrade_sparkline(full_df, entry_dt, exit_dt, entry_px, exit_px, sid
             showlegend=False, hoverinfo='skip'
         ))
         
-        # Dynamic Zoom
-        y_min = min(df['Low'].min(), entry_px, exit_px) * 0.9997
-        y_max = max(df['High'].max(), entry_px, exit_px) * 1.0003
+        # Dynamic Zoom (Maintaining current logic but ensuring markers are covered)
+        y_min = min(df['Low'].min(), entry_px, exit_px, e_pos, ex_pos) * 0.9997
+        y_max = max(df['High'].max(), entry_px, exit_px, e_pos, ex_pos) * 1.0003
 
         fig.update_layout(
             margin=dict(l=0, r=0, t=10, b=0),
