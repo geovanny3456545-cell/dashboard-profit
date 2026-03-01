@@ -15,13 +15,22 @@ def get_batch_market_data(proxies_to_fetch):
         # Round starts/ends to day boundaries to improve cache hits
         p_start = d_range['start'].replace(hour=0, minute=0, second=0) - datetime.timedelta(days=1)
         p_end = d_range['end'].replace(hour=23, minute=59, second=59) + datetime.timedelta(days=1)
+        
+        # Debug print (visible in Streamlit logs)
+        st.write(f"🔍 Buscando dados para {sym} de {p_start} até {p_end}")
+        
         try:
             df = yf.download(sym, start=p_start, end=p_end, interval='5m', progress=False)
             if not df.empty:
                 if isinstance(df.columns, pd.MultiIndex):
                     df.columns = [str(c[0]) for c in df.columns]
                 results[sym] = df
-        except:
+                st.write(f"✅ Sucesso: {len(df)} linhas obtidas para {sym}")
+            else:
+                st.write(f"⚠️ Aviso: yfinance retornou DataFrame vazio para {sym}")
+                results[sym] = pd.DataFrame()
+        except Exception as e:
+            st.write(f"❌ Erro ao baixar {sym}: {str(e)}")
             results[sym] = pd.DataFrame()
     return results
 
