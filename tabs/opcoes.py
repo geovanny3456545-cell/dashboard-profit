@@ -23,6 +23,22 @@ def save_strategies(strategies):
     with open(DB_PATH, "w", encoding="utf-8") as f:
         json.dump(strategies, f, indent=4, ensure_ascii=False)
 
+def get_b3_expiration(year, month):
+    """Calculates the 3rd Friday of a given month/year."""
+    first_day = datetime(year, month, 1)
+    first_friday = (4 - first_day.weekday() + 7) % 7
+    third_friday = 1 + first_friday + 14
+    return datetime(year, month, third_friday)
+
+def get_series_info(target_date, is_call=True):
+    """Returns the series letter and month name for B3 options."""
+    month = target_date.month
+    call_letters = "ABCDEFGHIJKL"
+    put_letters = "MNOPQRSTUVWX"
+    letter = call_letters[month-1] if is_call else put_letters[month-1]
+    month_names = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"]
+    return letter, month_names[month-1]
+
 def render():
     st.header("💎 Estratégias com Opções")
     
@@ -47,8 +63,21 @@ def render():
                 preco_atual = st.number_input("Preço da Ação (R$)", min_value=0.01, value=30.00, step=0.1)
                 alvo_ativo = st.number_input("Alvo (Brooks Target)", min_value=0.01, value=33.00, step=0.1)
             with col_e2:
-                tempo_alvo = st.number_input("Barras até o Alvo (Tempo)", min_value=1, value=10)
-                vencimento_opcoes = st.selectbox("Série de Vencimento", ["Próximo (Corrente)", "Seguinte"])
+                tempo_alvo = st.number_input("Barras até o Alvo (Tempo/Dias)", min_value=1, value=10)
+                
+                # --- Cálculo Automático de Vencimento ---
+                today = datetime.now()
+                # Simplified: assuming 1 bar = 1 calendar day for expiration check
+                target_date_est = today + pd.Timedelta(days=tempo_alvo)
+                
+                cur_exp = get_b3_expiration(today.year, today.month)
+                if target_date_est > cur_exp:
+                    # Suggest next month if target is after current expiration
+                    suggested_exp = get_b3_expiration(target_date_est.year, target_date_est.month)
+                else:
+                    suggested_exp = cur_exp
+                
+                st.caption(f"💡 Sugestão: Vencimento em {suggested_exp.strftime('%d/%m/%Y')}")
 
     st.markdown("---")
     
@@ -58,11 +87,18 @@ def render():
     
     with col1:
         lado = st.radio("Direção do Trade", ["Alta (Compra de Calls)", "Baixa (Compra de Puts)"], horizontal=False)
+        is_call = "Alta" in lado
+        letter, month_name = get_series_info(suggested_exp, is_call)
+        
         ativo_objeto = st.text_input("Código do Ativo (ex: PETR4)", value="PETR4").upper()
-        opcao_ticker = st.text_input("Código da Opção (ex: PETRE420)", placeholder="Opcional").upper()
+        
+        # Auto-suggest Ticker
+        default_ticker = f"{ativo_objeto[:4]}{letter}{int(preco_atual)}" if len(ativo_objeto) >= 4 else ""
+        opcao_ticker = st.text_input("Código da Opção (Sugerido)", value=default_ticker).upper()
+        st.caption(f"Série **{letter}** ({month_name}) indicada pelo sistema.")
 
     with col2:
-        strike = st.number_input("Strike da Opção", min_value=0.01, value=31.00, step=0.1)
+        strike = st.number_input("Strike da Opção", min_value=0.01, value=float(int(preco_atual + 1)), step=0.1)
         tipo_estratégia = st.selectbox("Estrutura Sugerida", ["Compra Seca (Puro Delta)", "Trava de Alta/Baixa (Spread)", "Calendário (Time spread)"])
         premio_pago = st.number_input("Prêmio pago (Custo)", min_value=0.01, value=0.40, step=0.05)
 
