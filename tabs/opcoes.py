@@ -1,12 +1,34 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import json
+import os
+from datetime import datetime
+
+# --- Persistence Utils ---
+DB_PATH = "data/opcoes.json"
+
+def load_saved_strategies():
+    if os.path.exists(DB_PATH):
+        try:
+            with open(DB_PATH, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except:
+            return []
+    return []
+
+def save_strategies(strategies):
+    # Ensure directory exists
+    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+    with open(DB_PATH, "w", encoding="utf-8") as f:
+        json.dump(strategies, f, indent=4, ensure_ascii=False)
 
 def render():
     st.header("💎 Estratégias com Opções")
-    st.markdown("""
-    Esta aba permite simular e registrar operações com derivativos para proteção ou rentabilização da carteira.
-    """)
+    
+    # Initialize strategies in session state if not present
+    if "saved_strategies" not in st.session_state:
+        st.session_state.saved_strategies = load_saved_strategies()
 
     # --- Seção de Entrada de Dados ---
     with st.expander("📝 Nova Simulação de Opção (Foco em Price Action Brooks)", expanded=True):
@@ -25,7 +47,7 @@ def render():
                 preco_atual = st.number_input("Preço da Ação (R$)", min_value=0.01, value=30.00, step=0.1)
                 alvo_ativo = st.number_input("Alvo (Brooks Target)", min_value=0.01, value=33.00, step=0.1)
             with col_e2:
-                tempo_alvo = st.number_input("Barras até o Alvo (Tempo)", min_value=1, value=10, help="Quantas barras você espera que leve para atingir o alvo?")
+                tempo_alvo = st.number_input("Barras até o Alvo (Tempo)", min_value=1, value=10)
                 vencimento_opcoes = st.selectbox("Série de Vencimento", ["Próximo (Corrente)", "Seguinte"])
 
     st.markdown("---")
@@ -36,11 +58,13 @@ def render():
     
     with col1:
         lado = st.radio("Direção do Trade", ["Alta (Compra de Calls)", "Baixa (Compra de Puts)"], horizontal=False)
-        strike = st.number_input("Strike da Opção", min_value=0.01, value=31.00, step=0.1)
+        ativo_objeto = st.text_input("Código do Ativo (ex: PETR4)", value="PETR4").upper()
+        opcao_ticker = st.text_input("Código da Opção (ex: PETRE420)", placeholder="Opcional").upper()
 
     with col2:
+        strike = st.number_input("Strike da Opção", min_value=0.01, value=31.00, step=0.1)
         tipo_estratégia = st.selectbox("Estrutura Sugerida", ["Compra Seca (Puro Delta)", "Trava de Alta/Baixa (Spread)", "Calendário (Time spread)"])
-        premio_pago = st.number_input("Prêmio da Opção (Custo)", min_value=0.01, value=0.40, step=0.05)
+        premio_pago = st.number_input("Prêmio pago (Custo)", min_value=0.01, value=0.40, step=0.05)
 
     with col3:
         st.info(f"**Análise Brooks:**\n\nCiclo: {ciclo}\nSetup: {sinal}")
@@ -52,36 +76,25 @@ def render():
     # --- Assistente de Estratégia ---
     st.subheader("💡 Assistente de Estratégia (Expert Advisor)")
     
-    # Lógica de Recomendação Brooks
     with st.container():
-        # Caso de ALTA
+        # Lógica de Recomendação (Simplificada)
+        recomp_text = ""
         if "Alta" in lado:
             if alvo_ativo <= preco_atual:
                 st.error("⚠️ Erro: Alvo de ALTA abaixo do preço atual.")
             else:
                 if ciclo == "Rompimento (Spike)" or ciclo == "Canal de Alta Estreito":
-                    st.success("**Estratégia: Compra Seca de CALL (ITM)**")
-                    st.write("Em rompimentos fortes ou canais estreitos, a urgência é alta. A compra seca captura o Delta rapidamente.")
-                elif ciclo == "Trading Range":
-                    st.info("**Estratégia: Venda de PUT (Lançamento Coberto)** ou **Trava de Alta**")
-                    st.write("Em Trading Range, buscamos comprar baixo. Uma trava de alta perto do suporte é mais eficiente.")
+                    recomp_text = "Compra Seca de CALL (ITM)"
+                    st.success(f"**Estratégia: {recomp_text}**")
                 else:
-                    if confianca_pa > 70:
-                        st.success("**Estratégia: Compra de CALL (ATM)**")
-                    else:
-                        st.warning("**Estratégia: Trava de Alta (Bull Call Spread)**")
-                        st.write("Baixa confiança ou canal amplo sugere proteção. A trava reduz o custo e o risco do tempo.")
-
-        # Caso de BAIXA
+                    recomp_text = "Trava de Alta"
+                    st.info(f"**Estratégia: {recomp_text}**")
         else:
             if alvo_ativo >= preco_atual:
                 st.error("⚠️ Erro: Alvo de BAIXA acima do preço atual.")
             else:
-                if ciclo == "Rompimento (Spike)" or ciclo == "Canal de Baixa Estreito":
-                    st.success("**Estratégia: Compra Seca de PUT (ITM/ATM)**")
-                else:
-                    st.warning("**Estratégia: Trava de Baixa (Bear Put Spread)**")
-                    st.write("Canais amplos de baixa costumam ter repiques. O spread protege melhor seu capital.")
+                recomp_text = "Compra de PUT ou Trava"
+                st.success(f"**Estratégia: {recomp_text}**")
 
     # --- Cálculos de Viabilidade ---
     distancia_alvo = abs((alvo_ativo / preco_atual) - 1) * 100
@@ -91,17 +104,63 @@ def render():
     st.markdown("---")
     st.subheader("📊 Números da Operação")
     m1, m2, m3, m4 = st.columns(4)
-    
     m1.metric("Distância Alvo", f"{distancia_alvo:.2f}%")
     m2.metric("V. Intrínseco no Alvo", f"R$ {intrinsic_value_at_target:.2f}")
-    
-    if potencial_lucro > 0:
-        m3.metric("Potencial Lucro", f"{potencial_lucro:.0f}%")
-    else:
-        m3.metric("Potencial Lucro", "0%", delta="-100%", delta_color="inverse")
-        
+    m3.metric("Potencial Lucro", f"{potencial_lucro:.0f}%")
     prob_final = "Alta" if (confianca_pa > 70 and distancia_alvo < 5) else ("Baixa" if distancia_alvo > 10 else "Média")
     m4.metric("Probabilidade Final", prob_final)
+
+    # --- Botão Salvar ---
+    if st.button("💾 Salvar Estratégia nos Cards"):
+        new_strat = {
+            "id": str(datetime.now().timestamp()),
+            "data_entrada": datetime.now().strftime("%d/%m/%Y %H:%M"),
+            "ativo": ativo_objeto,
+            "opcao": opcao_ticker,
+            "lado": lado,
+            "ciclo": ciclo,
+            "sinal": sinal,
+            "strike": strike,
+            "alvo": alvo_ativo,
+            "potencial": f"{potencial_lucro:.0f}%",
+            "prob": prob_final
+        }
+        st.session_state.saved_strategies.insert(0, new_strat)
+        save_strategies(st.session_state.saved_strategies)
+        st.success("Estratégia salva com sucesso!")
+        st.rerun()
+
+    # --- Exibição dos Cards ---
+    st.markdown("---")
+    st.subheader("🗂️ Suas Estratégias Salvas")
+    
+    if not st.session_state.saved_strategies:
+        st.info("Nenhuma estratégia salva ainda.")
+    else:
+        for idx, strat in enumerate(st.session_state.saved_strategies):
+            with st.container():
+                # Grid para o Card
+                c1, c2, c3, c4 = st.columns([2, 2, 2, 1])
+                
+                with c1:
+                    st.markdown(f"**{strat['ativo']}** - `{strat['opcao']}`")
+                    st.caption(f"🗓️ Entrada: {strat['data_entrada']}")
+                
+                with c2:
+                    st.write(f"🎯 Alvo: R$ {strat['alvo']:.2f}")
+                    st.write(f"📈 Potencial: {strat['potencial']}")
+                
+                with c3:
+                    st.write(f"🧠 {strat['ciclo']}")
+                    st.write(f"🎲 Prob: {strat['prob']}")
+                
+                with c4:
+                    if st.button("🗑️", key=f"del_{strat['id']}"):
+                        st.session_state.saved_strategies.pop(idx)
+                        save_strategies(st.session_state.saved_strategies)
+                        st.rerun()
+                
+                st.markdown("<hr style='margin:5px 0; border:0.5px solid #444'>", unsafe_allow_html=True)
 
     # --- Explicação Didática ---
     with st.expander("📚 Dicas de Price Action para Opções"):
@@ -111,10 +170,3 @@ def render():
         3. **Canais Amplos**: O movimento é lento. Opções secas sofrem com o tempo. Estruturas como **Spreads** são fundamentais aqui.
         4. **Theta & Brooks**: Se seu setup de Price Action prevê uma lateralidade por 10 barras, não compre opções curtas! O tempo vai corroer o prêmio antes do alvo ser atingido.
         """)
-
-    # --- Listagem de Opções de Interesse (Exemplo) ---
-    st.subheader("🔍 Monitoramento de Gregas (Beta)")
-    st.info("Em breve: Integração com dados em tempo real para cálculo de Delta, Gamma e Theta.")
-
-if __name__ == "__main__":
-    render()
