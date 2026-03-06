@@ -261,3 +261,6 @@ elif selected_main_tab == "📝 Relatórios":
 
 elif selected_main_tab == "💎 Opções":
     opcoes.render()
+# --- REBUILD TRIGGER ---
+# Last Sync: 2026-03-06 07:35 BRT
+# Version: 2.2.1-stable

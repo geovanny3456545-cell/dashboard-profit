@@ -175,29 +175,28 @@ def render():
         st.info("Nenhuma estratégia salva ainda.")
     else:
         for idx, strat in enumerate(st.session_state.saved_strategies):
-            with st.container():
-                # Grid para o Card
-                c1, c2, c3, c4 = st.columns([2, 2, 2, 1])
-                
-                with c1:
-                    st.markdown(f"**{strat['ativo']}** - `{strat['opcao']}`")
-                    st.caption(f"🗓️ Entrada: {strat['data_entrada']}")
-                
-                with c2:
-                    st.write(f"🎯 Alvo: R$ {strat['alvo']:.2f}")
-                    st.write(f"📈 Potencial: {strat['potencial']}")
-                
-                with c3:
-                    st.write(f"🧠 {strat['ciclo']}")
-                    st.write(f"🎲 Prob: {strat['prob']}")
-                
-                with c4:
-                    if st.button("🗑️", key=f"del_{strat['id']}"):
-                        st.session_state.saved_strategies.pop(idx)
-                        save_strategies(st.session_state.saved_strategies)
-                        st.rerun()
-                
-                st.markdown("<hr style='margin:5px 0; border:0.5px solid #444'>", unsafe_allow_html=True)
+            # Grid para o Card
+            c1, c2, c3, c4 = st.columns([2, 2, 2, 1])
+            
+            with c1:
+                st.markdown(f"**{strat['ativo']}** - `{strat['opcao']}`")
+                st.caption(f"🗓️ Entrada: {strat['data_entrada']}")
+            
+            with c2:
+                st.write(f"🎯 Alvo: R$ {strat['alvo']:.2f}")
+                st.write(f"📈 Potencial: {strat['potencial']}")
+            
+            with c3:
+                st.write(f"🧠 {strat['ciclo']}")
+                st.write(f"🎲 Prob: {strat['prob']}")
+            
+            with c4:
+                if st.button("🗑️", key=f"del_{strat['id']}"):
+                    st.session_state.saved_strategies.pop(idx)
+                    save_strategies(st.session_state.saved_strategies)
+                    st.rerun()
+            
+            st.markdown("<hr style='margin:1px 0; border:0; border-top:1px solid #444; opacity:0.3;'>", unsafe_allow_html=True)
 
     # --- Explicação Didática ---
     with st.expander("📚 Dicas de Price Action para Opções"):

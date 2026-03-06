@@ -48,8 +48,8 @@ def render(df, df_raw):
         x_seq = np.arange(len(df_chart))
         y_vals = df_chart['Cumulative'].values
         
-        # ProfitPro Aesthetics
-        line_color = '#00fa9a' if total_pnl >= 0 else '#ff4d4d'
+        # ProfitPro Aesthetics (Negative=Red, Zero=Gray, Positive=Green)
+        line_color = '#00fa9a' if total_pnl > 0 else '#bbbbbb' if total_pnl == 0 else '#ff4d4d'
         
         fig = go.Figure()
         

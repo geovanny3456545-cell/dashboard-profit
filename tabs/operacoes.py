@@ -336,24 +336,22 @@ def render_daytrade_sparkline(full_df, entry_dt, exit_dt, entry_px, exit_px, sid
         # side 'C': Entry is BUY (Arrow points UP), Exit is SELL (Arrow points DOWN)
         # side 'V': Entry is SELL (Arrow points DOWN), Exit is BUY (Arrow points UP)
         
-        # Entry Arrow
+        # Entry Arrow (Pointing from left to target)
         e_color = "#00fa9a" if side == 'C' else "#ff4d4d"
-        e_ay = 30 if side == 'C' else -30 # Positive is down in Plotly pixels, so 30 means tail is below -> Points UP
         
         fig.add_annotation(
             x=entry_dt, y=entry_px,
             text="", showarrow=True, arrowhead=3, arrowsize=1.5, arrowwidth=2, arrowcolor=e_color,
-            ax=0, ay=e_ay, ayref='pixel', hovertext=f"Entrada: {entry_px:,.2f}"
+            ax=-30, ay=0, axref='pixel', ayref='pixel', hovertext=f"Entrada: {entry_px:,.2f}"
         )
         
-        # Exit Arrow
+        # Exit Arrow (Pointing from right to target)
         ex_color = "#ffcc00"
-        ex_ay = -30 if side == 'C' else 30 # For Buy trade, exit is Sell -> Points DOWN
         
         fig.add_annotation(
             x=exit_dt, y=exit_px,
             text="", showarrow=True, arrowhead=3, arrowsize=1.5, arrowwidth=2, arrowcolor=ex_color,
-            ax=0, ay=ex_ay, ayref='pixel', hovertext=f"Saída: {exit_px:,.2f}"
+            ax=30, ay=0, axref='pixel', ayref='pixel', hovertext=f"Saída: {exit_px:,.2f}"
         )
         
         # Connect with dashed line
