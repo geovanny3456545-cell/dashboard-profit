@@ -86,3 +86,29 @@ def render(df, metrics):
         st.markdown("<div class='grid-header'>Monitor de Disciplina (Substack)</div>", unsafe_allow_html=True)
         streak = metrics.get('discipline_streak', 0)
         st.markdown(grid_row("Trades sem Fading", f"{streak} 🔥", "profit-val" if streak > 5 else ""), unsafe_allow_html=True)
+
+    # --- LATEST REPORT HIGHLIGHT ---
+    import os
+    import json
+    reports_path = os.path.join("data", "relatorios.json")
+    if os.path.exists(reports_path):
+        try:
+            with open(reports_path, 'r', encoding='utf-8') as f:
+                reports = json.load(f)
+            if reports:
+                latest = reports[-1]
+                st.markdown("---")
+                c_rep1, c_rep2 = st.columns([7, 3])
+                with c_rep1:
+                    st.subheader(f"📑 Último Relatório: {latest['title']}")
+                    st.caption(f"Publicado em: {latest['date']}")
+                with c_rep2:
+                    if st.button("Ler Relatório Completo 📝", use_container_width=True):
+                        st.session_state.selected_main_tab = "📝 Relatórios"
+                        st.rerun()
+                
+                # Show first few lines of content in an expander or block
+                preview = latest['content'].split('\n')[:5]
+                st.markdown('\n'.join(preview) + "...")
+        except:
+            pass
