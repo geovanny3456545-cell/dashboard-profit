@@ -51,6 +51,18 @@ def render(df, metrics):
         st.markdown(grid_row("Fator de Lucro", f"{profit_factor:.2f}"), unsafe_allow_html=True)
         st.markdown(grid_row("Total de Trades", f"{num_trades}"), unsafe_allow_html=True)
         st.markdown(grid_row("Taxa de Acerto", f"{win_rate:.2f}%", "profit-val", extra_style="color:#00fa9a !important;"), unsafe_allow_html=True)
+        
+        # Gestão Matemática Insight
+        if win_rate > 0:
+            min_payoff = (100 - win_rate) / win_rate
+            st.markdown(f"""
+            <div style="background: rgba(0, 250, 154, 0.05); border: 1px solid rgba(0, 250, 154, 0.1); border-radius: 4px; padding: 12px; margin-top: 15px;">
+                <div style="color: #00fa9a; font-size: 0.8em; font-weight: bold; text-transform: uppercase; margin-bottom: 5px; letter-spacing: 0.5px;">Gestão Matemática</div>
+                <div style="color: #ccc; font-size: 0.9em; line-height: 1.4;">
+                    Com sua taxa de <b>{win_rate:.1f}%</b>, seu alvo médio deve ser no mínimo <b>{min_payoff:.2f}x</b> o seu risco para manter a lucratividade estatística.
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
 
     with c2:
         st.markdown("<div class='grid-header'>Médias</div>", unsafe_allow_html=True)
