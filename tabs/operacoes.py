@@ -190,45 +190,6 @@ def render(df, df_raw):
                     st.markdown(f"- **P/L Final:** :{res_color}[{row['Res. Operação']}]")
                     st.write(f"- **Tempo:** {row['Tempo Operação']}")
 
-    st.markdown("---")
-
-    # --- TOP SCROLL BAR COMPONENT ---
-    components.html("""
-        <style>
-            #top-scroll-wrapper {
-                width: 100%;
-                overflow-x: auto;
-                overflow-y: hidden;
-                height: 16px;
-                background: #1e1e1e;
-                border-radius: 4px;
-                margin-bottom: 5px;
-            }
-            #top-scroll-content { height: 16px; }
-            ::-webkit-scrollbar { height: 8px; }
-            ::-webkit-scrollbar-thumb { background: #555; border-radius: 4px; }
-        </style>
-        <div id="top-scroll-wrapper"><div id="top-scroll-content"></div></div>
-        <script>
-            const sync = () => {
-                const wrapper = document.getElementById('top-scroll-wrapper');
-                const content = document.getElementById('top-scroll-content');
-                const parent = window.parent.document;
-                const dataframes = parent.querySelectorAll('[data-testid="stDataFrame"]');
-                
-                if (dataframes.length > 0 && wrapper && content) {
-                    const df = dataframes[0];
-                    const scrollable = df.querySelector('.glideDataEditor') || df.querySelector('div[overflow="auto"]') || df;
-                    
-                    content.style.width = scrollable.scrollWidth + 'px';
-                    wrapper.onscroll = () => { scrollable.scrollLeft = wrapper.scrollLeft; };
-                    scrollable.onscroll = () => { wrapper.scrollLeft = scrollable.scrollLeft; };
-                }
-            };
-            setInterval(sync, 2000);
-        </script>
-    """, height=30)
-
     # --- DATAFRAME ---
     target_cols = [
         'Ativo', 'Abertura', 'Fechamento', 'Tempo Operação', 

@@ -48,37 +48,53 @@ def render(df, df_raw):
         x_seq = np.arange(len(df_chart))
         y_vals = df_chart['Cumulative'].values
         
+        # ProfitPro Aesthetics
+        line_color = '#00fa9a' if total_pnl >= 0 else '#ff4d4d'
+        
         fig = go.Figure()
         
-        # Premium Colors
-        color_gain = '#00D1FF' # Electric Blue/Cyan for growth
-        color_loss = '#FF3B30' # Vibrant Red for loss
-        fill_gain = 'rgba(0, 209, 255, 0.15)'
-        fill_loss = 'rgba(255, 59, 48, 0.15)'
-
-        # Continuous Line with Spline Smoothing for 'Premium' feel
+        # Step Line for Equity (Standard Trading Style)
         fig.add_trace(go.Scatter(
             x=x_seq, y=y_vals,
             mode='lines+markers',
-            line=dict(color='#FFFFFF', width=3, shape='spline', smoothing=1.3),
-            marker=dict(size=6, color='#FFFFFF', line=dict(width=1, color='#1e1e1e')),
+            line=dict(color=line_color, width=2, shape='hv'), # 'hv' for step-like movement
+            marker=dict(
+                size=4, 
+                color='#FFFFFF', 
+                line=dict(width=1, color=line_color)
+            ),
             fill='tozeroy',
-            fillcolor='rgba(255, 255, 255, 0.05)',
-            name="Equity",
-            hovertemplate="<b>Trade %{x}</b><br>Saldo: R$ %{y:,.2f}<extra></extra>"
+            fillcolor=f'rgba({0 if total_pnl < 0 else 0}, {250 if total_pnl >= 0 else 77}, {154 if total_pnl >= 0 else 77}, 0.1)',
+            name="Patrimônio",
+            hovertemplate="<b>Operação %{x}</b><br>Saldo: R$ %{y:,.2f}<extra></extra>"
         ))
         
         fig.update_layout(
-            title=dict(text="Curva de Social Proof (Equity Curve)", font=dict(size=20, color='#FFFFFF')),
-            plot_bgcolor='#111111', paper_bgcolor='#111111', 
-            font=dict(color='#888', family="Inter, sans-serif"),
-            xaxis=dict(gridcolor='#222', zerolinecolor='#444', title="Sequência de Operações"),
-            yaxis=dict(gridcolor='#222', zerolinecolor='#444', title="Resultado Acumulado (R$)"),
-            margin=dict(l=40, r=40, t=60, b=40),
-            showlegend=False
+            title=dict(
+                text="Performance Acumulada (Estilo ProfitPro)", 
+                font=dict(size=18, color='#FFFFFF', family="Segoe UI, sans-serif")
+            ),
+            plot_bgcolor='#121212', 
+            paper_bgcolor='#121212', 
+            font=dict(color='#888', family="Segoe UI, sans-serif"),
+            xaxis=dict(
+                gridcolor='#252525', 
+                zerolinecolor='#444', 
+                title="Ordens Executadas",
+                tickfont=dict(size=10)
+            ),
+            yaxis=dict(
+                gridcolor='#252525', 
+                zerolinecolor='#444', 
+                title="Resultado Bruto (R$)",
+                tickfont=dict(size=10)
+            ),
+            margin=dict(l=40, r=40, t=50, b=40),
+            showlegend=False,
+            hovermode="x unified"
         )
-        fig.add_hline(y=0, line_dash="solid", line_color="#444", line_width=1)
-        st.plotly_chart(fig, use_container_width=True, key="chart_equity_premium")
+        fig.add_hline(y=0, line_dash="dash", line_color="#555", line_width=1)
+        st.plotly_chart(fig, use_container_width=True, key="chart_equity_profit")
 
     # 2. Gráfico de Operações (Scatter Individual)
     elif chart_view == "Gráfico de Operações":

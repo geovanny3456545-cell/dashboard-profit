@@ -102,7 +102,11 @@ def _load_performance_report():
             l_low = line.lower()
             if "ativo" in l_low and ("abertura" in l_low or "data" in l_low):
                 header_idx = i
-                sep = ';' if line.count(';') > line.count(',') else ','
+                # Robust separator detection: prefer ; if it appears multiple times
+                if line.count(';') >= 5:
+                    sep = ';'
+                else:
+                    sep = ',' if line.count(',') > line.count(';') else ';'
                 break
         
         if header_idx == -1: return pd.DataFrame(), {}
@@ -113,6 +117,7 @@ def _load_performance_report():
         header_line = f.readline().strip()
         reader_h = csv.reader(io.StringIO(header_line), delimiter=sep)
         headers = next(reader_h)
+        # Clean headers: remove quotes AND replace internal commas with spaces for mapping
         headers = [h.replace('"', '').replace(',', ' ').strip() for h in headers]
         
         reader_d = csv.reader(f, delimiter=sep, quoting=csv.QUOTE_MINIMAL)
@@ -126,6 +131,7 @@ def _load_performance_report():
         if len(headers) < max_cols:
              new_headers = []
              for h in headers:
+                 # Check for the specific "Tempo Operação" field which often splits
                  if 'Tempo' in h and 'Opera' in h:
                      new_headers.extend(['Hora Fechamento', 'Tempo Operação'])
                  else:
@@ -143,18 +149,18 @@ def _load_performance_report():
         found_qtd = False
         for c in df.columns:
             cl = c.lower().strip()
+            # Standard mappings (handles spaces/commas in names via header cleaning above)
             if 'ativo' in cl and 'ag' not in cl: name_map[c] = 'Ativo'
             elif 'abertura' in cl: name_map[c] = 'Abertura'
             elif 'fechamento' in cl and 'hora' not in cl: name_map[c] = 'Fechamento'
             elif 'res' in cl and 'bruto' in cl: name_map[c] = 'Res. Intervalo Bruto'
+            elif 'res' in cl and 'intervalo' in cl and '%' not in cl and 'Bruto' not in name_map.values(): 
+                name_map[c] = 'Res. Intervalo Bruto'
             elif 'lado' in cl: name_map[c] = 'Lado'
-            elif 'preço' in cl and 'compra' in cl.replace(',', ' '): name_map[c] = 'Preço Compra'
-            elif 'preço' in cl and 'venda' in cl.replace(',', ' '): name_map[c] = 'Preço Venda'
+            elif 'preço' in cl and 'compra' in cl: name_map[c] = 'Preço Compra'
+            elif 'preço' in cl and 'venda' in cl: name_map[c] = 'Preço Venda'
             elif 'médio' in cl: name_map[c] = 'Médio'
             elif 'qtd' in cl and not found_qtd:
-                # Map only the FIRST Qtd-related column found to 'Qtd'
-                # ProfitPro typically has Qtd Compra followed by Qtd Venda
-                # We will handle the actual quantity cleanup below
                 name_map[c] = 'Qtd'
                 found_qtd = True
 
