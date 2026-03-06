@@ -51,7 +51,7 @@ def render(df, df_raw):
         # Line color logic
         line_color = '#00fa9a' if total_pnl > 0 else '#bbbbbb' if total_pnl == 0 else '#ff4d4d'
         # Fill color logic (RGBA)
-        fill_rgba = "0, 250, 154, 0.1" if total_pnl > 0 else "255, 77, 77, 0.1" if total_pnl < 0 else "187, 187, 187, 0.1"
+        fill_rgba = "0, 250, 154, 0.15" if total_pnl > 0 else "255, 77, 77, 0.15" if total_pnl < 0 else "187, 187, 187, 0.1"
         
         fig = go.Figure()
         
@@ -61,9 +61,9 @@ def render(df, df_raw):
             mode='lines+markers',
             line=dict(color=line_color, width=2, shape='hv'), # 'hv' for step-like movement
             marker=dict(
-                size=4, 
-                color='#FFFFFF', 
-                line=dict(width=1, color=line_color)
+                size=5, 
+                color=[("#00fa9a" if y > 0 else "#ff4d4d" if y < 0 else "#bbbbbb") for y in y_vals],
+                line=dict(width=1, color="#121212")
             ),
             fill='tozeroy',
             fillcolor=f'rgba({fill_rgba})',

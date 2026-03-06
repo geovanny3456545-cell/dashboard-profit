@@ -336,22 +336,22 @@ def render_daytrade_sparkline(full_df, entry_dt, exit_dt, entry_px, exit_px, sid
         # side 'C': Entry is BUY (Arrow points UP), Exit is SELL (Arrow points DOWN)
         # side 'V': Entry is SELL (Arrow points DOWN), Exit is BUY (Arrow points UP)
         
-        # Entry Arrow (Pointing from left to target)
+        # Entry Arrow (Tiny horizontal)
         e_color = "#00fa9a" if side == 'C' else "#ff4d4d"
         
         fig.add_annotation(
             x=entry_dt, y=entry_px,
-            text="", showarrow=True, arrowhead=2, arrowsize=2, arrowwidth=3, arrowcolor=e_color,
-            ax=-40, ay=0, axref='pixel', ayref='pixel', hovertext=f"Entrada: {entry_px:,.2f}"
+            text="", showarrow=True, arrowhead=2, arrowsize=1, arrowwidth=1.5, arrowcolor=e_color,
+            ax=-15, ay=0, axref='pixel', ayref='pixel', hovertext=f"Entrada: {entry_px:,.2f}"
         )
         
-        # Exit Arrow (Pointing from right to target)
+        # Exit Arrow (Tiny horizontal)
         ex_color = "#ffcc00"
         
         fig.add_annotation(
             x=exit_dt, y=exit_px,
-            text="", showarrow=True, arrowhead=2, arrowsize=2, arrowwidth=3, arrowcolor=ex_color,
-            ax=40, ay=0, axref='pixel', ayref='pixel', hovertext=f"Saída: {exit_px:,.2f}"
+            text="", showarrow=True, arrowhead=2, arrowsize=1, arrowwidth=1.5, arrowcolor=ex_color,
+            ax=15, ay=0, axref='pixel', ayref='pixel', hovertext=f"Saída: {exit_px:,.2f}"
         )
         
         # Connect with dashed line
