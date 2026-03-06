@@ -131,7 +131,7 @@ with st.sidebar:
     
     # Debug Expander for data verification
     st.markdown("---")
-    st.caption(f"🚀 **Versão:** `2.3.4-stable` | **Sync:** ✅")
+    st.caption(f"🚀 **Versão:** `2.3.5-stable` | **Sync:** ✅")
     
     if 'df_raw' in st.session_state and not st.session_state['df_raw'].empty:
         with st.sidebar.expander("🔍 Debug de Sincronização"):

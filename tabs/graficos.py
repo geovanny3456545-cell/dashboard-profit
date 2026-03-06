@@ -33,41 +33,74 @@ def render(df, df_raw):
         
         total_pnl = df_chart['Res_Numeric'].sum()
         num_trades = len(df_chart)
-        win_rate = (len(df_chart[df_chart['Res_Numeric'] >= 0]) / num_trades * 100) if num_trades > 0 else 0
+        # Alinhado com metrics.py (apenas Res_Numeric > 0)
+        win_rate = (len(df_chart[df_chart['Res_Numeric'] > 0]) / num_trades * 100) if num_trades > 0 else 0
         
         c_pnl = "#00fa9a" if total_pnl > 0 else "#ff4d4d" if total_pnl < 0 else "#bbbbbb"
         
         st.markdown(f"""
-        <div style="display: flex; background:#262626; padding:10px; border-radius:4px; gap:20px; font-size:14px; color:#ccc;">
+        <div style="display: flex; background:#262626; padding:10px; border-radius:4px; gap:20px; font-size:14px; color:#ccc; border-top: 1px solid #444;">
             <div>Res. Liq: <span style="color:{c_pnl}; font-weight:bold;">R$ {total_pnl:,.2f}</span></div>
             <div>Ops: <b>{num_trades}</b></div>
             <div>Win Rate: <b style="color:#00fa9a;">{win_rate:.1f}%</b></div>
         </div>
         """, unsafe_allow_html=True)
         
-        x_seq = np.arange(len(df_chart))
-        y_vals = df_chart['Cumulative'].values
+        x_raw = np.arange(len(df_chart))
+        y_raw = df_chart['Cumulative'].values
         
-        # Consolidated Equity Chart (Single Trace for Integrity)
-        line_color = '#00fa9a' if total_pnl > 0 else '#ff4d4d' if total_pnl < 0 else '#bbbbbb'
-        fill_rgba = "0, 250, 154, 0.15" if total_pnl > 0 else "255, 77, 77, 0.15" if total_pnl < 0 else "187, 187, 187, 0.1"
-        
+        # Interpolação para cruzamento suave no zero (Shadow Fix)
+        new_x, new_y = [], []
+        for i in range(len(y_raw)):
+            if i > 0:
+                y0, y1 = y_raw[i-1], y_raw[i]
+                x0, x1 = x_raw[i-1], x_raw[i]
+                if (y0 < 0 and y1 > 0) or (y0 > 0 and y1 < 0):
+                    # Interpolação linear: Encontrar x onde y=0
+                    x_mid = x0 + (0 - y0) * (x1 - x0) / (y1 - y0)
+                    new_x.append(x_mid)
+                    new_y.append(0.0)
+            new_x.append(x_raw[i])
+            new_y.append(y_raw[i])
+
+        # Traces para sombras independentes (Positivo vs Negativo)
+        y_pos = [y if y >= 0 else None for y in new_y]
+        y_neg = [y if y <= 0 else None for y in new_y]
+
         fig = go.Figure()
-        
-        # Chronological Equity Line
+
+        # Linha e Sombra Positiva (Verde)
         fig.add_trace(go.Scatter(
-            x=x_seq, y=y_vals,
+            x=new_x, y=y_pos,
             mode='lines+markers',
-            line=dict(color=line_color, width=2, shape='hv'),
+            line=dict(color='#00fa9a', width=2),
+            connectgaps=False, # Importante para não "pular" o gap
             marker=dict(
-                size=5, 
-                color=[("#00fa9a" if y > 0 else "#ff4d4d" if y < 0 else "#bbbbbb") for y in y_vals],
+                size=4, 
+                color=[("#00fa9a" if (y is not None and y > 0) else "rgba(0,0,0,0)") for y in new_y],
                 line=dict(width=1, color="#121212")
             ),
             fill='tozeroy',
-            fillcolor=f'rgba({fill_rgba})',
-            name="Patrimônio",
-            hovertemplate="<b>Operação %{x}</b><br>Saldo: R$ %{y:,.2f}<extra></extra>"
+            fillcolor='rgba(0, 250, 154, 0.15)',
+            name="Lucro",
+            hovertemplate="Saldo: R$ %{y:,.2f}<extra></extra>"
+        ))
+
+        # Linha e Sombra Negativa (Vermelha)
+        fig.add_trace(go.Scatter(
+            x=new_x, y=y_neg,
+            mode='lines+markers',
+            line=dict(color='#ff4f4f', width=2),
+            connectgaps=False,
+            marker=dict(
+                size=4, 
+                color=[("#ff4f4f" if (y is not None and y < 0) else "rgba(0,0,0,0)") for y in new_y],
+                line=dict(width=1, color="#121212")
+            ),
+            fill='tozeroy',
+            fillcolor='rgba(255, 79, 79, 0.15)',
+            name="Prejuízo",
+            hovertemplate="Saldo: R$ %{y:,.2f}<extra></extra>"
         ))
         
         fig.update_layout(
