@@ -130,6 +130,9 @@ with st.sidebar:
         st.caption(f"Última atualização: {st.session_state['last_refresh']}")
     
     # Debug Expander for data verification
+    st.markdown("---")
+    st.caption(f"🚀 **Versão:** `2.3.0-stable` | **Sync:** ✅")
+    
     if 'df_raw' in st.session_state and not st.session_state['df_raw'].empty:
         with st.sidebar.expander("🔍 Debug de Sincronização"):
             df = st.session_state['df_raw']

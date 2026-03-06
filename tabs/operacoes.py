@@ -341,8 +341,8 @@ def render_daytrade_sparkline(full_df, entry_dt, exit_dt, entry_px, exit_px, sid
         
         fig.add_annotation(
             x=entry_dt, y=entry_px,
-            text="", showarrow=True, arrowhead=3, arrowsize=1.5, arrowwidth=2, arrowcolor=e_color,
-            ax=-30, ay=0, axref='pixel', ayref='pixel', hovertext=f"Entrada: {entry_px:,.2f}"
+            text="", showarrow=True, arrowhead=2, arrowsize=2, arrowwidth=3, arrowcolor=e_color,
+            ax=-40, ay=0, axref='pixel', ayref='pixel', hovertext=f"Entrada: {entry_px:,.2f}"
         )
         
         # Exit Arrow (Pointing from right to target)
@@ -350,8 +350,8 @@ def render_daytrade_sparkline(full_df, entry_dt, exit_dt, entry_px, exit_px, sid
         
         fig.add_annotation(
             x=exit_dt, y=exit_px,
-            text="", showarrow=True, arrowhead=3, arrowsize=1.5, arrowwidth=2, arrowcolor=ex_color,
-            ax=30, ay=0, axref='pixel', ayref='pixel', hovertext=f"Saída: {exit_px:,.2f}"
+            text="", showarrow=True, arrowhead=2, arrowsize=2, arrowwidth=3, arrowcolor=ex_color,
+            ax=40, ay=0, axref='pixel', ayref='pixel', hovertext=f"Saída: {exit_px:,.2f}"
         )
         
         # Connect with dashed line

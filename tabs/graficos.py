@@ -48,8 +48,10 @@ def render(df, df_raw):
         x_seq = np.arange(len(df_chart))
         y_vals = df_chart['Cumulative'].values
         
-        # ProfitPro Aesthetics (Negative=Red, Zero=Gray, Positive=Green)
+        # Line color logic
         line_color = '#00fa9a' if total_pnl > 0 else '#bbbbbb' if total_pnl == 0 else '#ff4d4d'
+        # Fill color logic (RGBA)
+        fill_rgba = "0, 250, 154, 0.1" if total_pnl > 0 else "255, 77, 77, 0.1" if total_pnl < 0 else "187, 187, 187, 0.1"
         
         fig = go.Figure()
         
@@ -64,7 +66,7 @@ def render(df, df_raw):
                 line=dict(width=1, color=line_color)
             ),
             fill='tozeroy',
-            fillcolor=f'rgba({0 if total_pnl < 0 else 0}, {250 if total_pnl >= 0 else 77}, {154 if total_pnl >= 0 else 77}, 0.1)',
+            fillcolor=f'rgba({fill_rgba})',
             name="Patrimônio",
             hovertemplate="<b>Operação %{x}</b><br>Saldo: R$ %{y:,.2f}<extra></extra>"
         ))
