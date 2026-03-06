@@ -59,7 +59,10 @@ def render(df, metrics):
             <div style="background: rgba(0, 250, 154, 0.05); border: 1px solid rgba(0, 250, 154, 0.1); border-radius: 4px; padding: 12px; margin-top: 15px;">
                 <div style="color: #00fa9a; font-size: 0.8em; font-weight: bold; text-transform: uppercase; margin-bottom: 5px; letter-spacing: 0.5px;">Gestão Matemática</div>
                 <div style="color: #ccc; font-size: 0.9em; line-height: 1.4;">
-                    Com sua taxa de <b>{win_rate:.1f}%</b>, seu alvo médio deve ser no mínimo <b>{min_payoff:.2f}x</b> o seu risco para manter a lucratividade estatística.
+                    Para sua taxa de <b>{win_rate:.1f}%</b>, o Payoff mínimo é de <b>{min_payoff:.2f}x</b>.<br><br>
+                    <span style="color: #888; font-size: 0.85em;">Benchmarks de Sobrevivência:</span><br>
+                    • Alvos <b>2:1</b> exigem <b>33.3%</b> de acerto.<br>
+                    • Alvos <b>3:1</b> exigem <b>25.0%</b> de acerto.
                 </div>
             </div>
             """, unsafe_allow_html=True)
