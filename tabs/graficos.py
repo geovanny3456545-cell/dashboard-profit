@@ -33,13 +33,13 @@ def render(df, df_raw):
         
         total_pnl = df_chart['Res_Numeric'].sum()
         num_trades = len(df_chart)
-        # Alinhado com metrics.py (apenas Res_Numeric > 0)
+        # Alinhamento exato: Apenas ganhos reais (>0)
         win_rate = (len(df_chart[df_chart['Res_Numeric'] > 0]) / num_trades * 100) if num_trades > 0 else 0
         
         c_pnl = "#00fa9a" if total_pnl > 0 else "#ff4d4d" if total_pnl < 0 else "#bbbbbb"
         
         st.markdown(f"""
-        <div style="display: flex; background:#262626; padding:10px; border-radius:4px; gap:20px; font-size:14px; color:#ccc; border-top: 1px solid #444;">
+        <div style="display: flex; background:#262626; padding:10px; border-radius:4px; gap:20px; font-size:14px; color:#ccc;">
             <div>Res. Liq: <span style="color:{c_pnl}; font-weight:bold;">R$ {total_pnl:,.2f}</span></div>
             <div>Ops: <b>{num_trades}</b></div>
             <div>Win Rate: <b style="color:#00fa9a;">{win_rate:.1f}%</b></div>
@@ -49,83 +49,82 @@ def render(df, df_raw):
         x_raw = np.arange(len(df_chart))
         y_raw = df_chart['Cumulative'].values
         
-        # Interpolação para cruzamento suave no zero (Shadow Fix)
-        new_x, new_y = [], []
+        # Construção de Segmentos para modo HV (Step)
+        x_pos, y_pos = [], []
+        x_neg, y_neg = [], []
+        
         for i in range(len(y_raw)):
-            if i > 0:
-                y0, y1 = y_raw[i-1], y_raw[i]
-                x0, x1 = x_raw[i-1], x_raw[i]
-                if (y0 < 0 and y1 > 0) or (y0 > 0 and y1 < 0):
-                    # Interpolação linear: Encontrar x onde y=0
-                    x_mid = x0 + (0 - y0) * (x1 - x0) / (y1 - y0)
-                    new_x.append(x_mid)
-                    new_y.append(0.0)
-            new_x.append(x_raw[i])
-            new_y.append(y_raw[i])
-
-        # Traces para sombras independentes (Positivo vs Negativo)
-        y_pos = [y if y >= 0 else None for y in new_y]
-        y_neg = [y if y <= 0 else None for y in new_y]
+            if i == 0:
+                y = y_raw[i]
+                if y >= 0:
+                    x_pos.append(x_raw[i]); y_pos.append(y)
+                    x_neg.append(x_raw[i]); y_neg.append(None)
+                else:
+                    x_pos.append(x_raw[i]); y_pos.append(None)
+                    x_neg.append(x_raw[i]); y_neg.append(y)
+            else:
+                y_prev, y_curr = y_raw[i-1], y_raw[i]
+                x_prev, x_curr = x_raw[i-1], x_raw[i]
+                
+                # Segmento Horizontal (Mantém y_prev de x_prev a x_curr)
+                if y_prev >= 0:
+                    x_pos.extend([x_prev, x_curr]); y_pos.extend([y_prev, y_prev])
+                    x_neg.extend([x_prev, x_curr]); y_neg.extend([None, None])
+                else:
+                    x_pos.extend([x_prev, x_curr]); y_pos.extend([None, None])
+                    x_neg.extend([x_prev, x_curr]); y_neg.extend([y_prev, y_prev])
+                
+                # Segmento Vertical (Pulo de y_prev para y_curr em x_curr)
+                if y_prev >= 0 and y_curr >= 0:
+                    x_pos.append(x_curr); y_pos.append(y_curr)
+                    x_neg.append(x_curr); y_neg.append(None)
+                elif y_prev < 0 and y_curr < 0:
+                    x_pos.append(x_curr); y_pos.append(None)
+                    x_neg.append(x_curr); y_neg.append(y_curr)
+                elif y_prev >= 0 and y_curr < 0:
+                    # Cruza para baixo
+                    x_pos.append(x_curr); y_pos.append(0)
+                    x_neg.extend([x_curr, x_curr]); y_neg.extend([0, y_curr])
+                elif y_prev < 0 and y_curr >= 0:
+                    # Cruza para cima
+                    x_neg.append(x_curr); y_neg.append(0)
+                    x_pos.extend([x_curr, x_curr]); y_pos.extend([0, y_curr])
 
         fig = go.Figure()
 
-        # Linha e Sombra Positiva (Verde)
+        # Sombra/Linha Positiva
         fig.add_trace(go.Scatter(
-            x=new_x, y=y_pos,
-            mode='lines+markers',
-            line=dict(color='#00fa9a', width=2),
-            connectgaps=False, # Importante para não "pular" o gap
-            marker=dict(
-                size=4, 
-                color=[("#00fa9a" if (y is not None and y > 0) else "rgba(0,0,0,0)") for y in new_y],
-                line=dict(width=1, color="#121212")
-            ),
-            fill='tozeroy',
-            fillcolor='rgba(0, 250, 154, 0.15)',
-            name="Lucro",
-            hovertemplate="Saldo: R$ %{y:,.2f}<extra></extra>"
+            x=x_pos, y=y_pos, mode='lines', line=dict(color='#00fa9a', width=2),
+            fill='tozeroy', fillcolor='rgba(0, 250, 154, 0.15)', name="Lucro",
+            hoverinfo='skip', connectgaps=False
         ))
 
-        # Linha e Sombra Negativa (Vermelha)
+        # Sombra/Linha Negativa
         fig.add_trace(go.Scatter(
-            x=new_x, y=y_neg,
-            mode='lines+markers',
-            line=dict(color='#ff4f4f', width=2),
-            connectgaps=False,
+            x=x_neg, y=y_neg, mode='lines', line=dict(color='#ff4f4f', width=2),
+            fill='tozeroy', fillcolor='rgba(255, 79, 79, 0.15)', name="Prejuízo",
+            hoverinfo='skip', connectgaps=False
+        ))
+
+        # Marcadores (Trades Originais para Cronologia e Info)
+        fig.add_trace(go.Scatter(
+            x=x_raw, y=y_raw, mode='markers',
             marker=dict(
-                size=4, 
-                color=[("#ff4f4f" if (y is not None and y < 0) else "rgba(0,0,0,0)") for y in new_y],
+                size=6, 
+                color=[("#00fa9a" if y > 0 else "#ff4f4f" if y < 0 else "#bbbbbb") for y in y_raw],
                 line=dict(width=1, color="#121212")
             ),
-            fill='tozeroy',
-            fillcolor='rgba(255, 79, 79, 0.15)',
-            name="Prejuízo",
-            hovertemplate="Saldo: R$ %{y:,.2f}<extra></extra>"
+            name="Trade",
+            hovertemplate="<b>Operação %{x}</b><br>Saldo: R$ %{y:,.2f}<extra></extra>"
         ))
         
         fig.update_layout(
-            title=dict(
-                text="Performance Acumulada (Estilo ProfitPro)", 
-                font=dict(size=18, color='#FFFFFF', family="Segoe UI, sans-serif")
-            ),
-            plot_bgcolor='#121212', 
-            paper_bgcolor='#121212', 
-            font=dict(color='#888', family="Segoe UI, sans-serif"),
-            xaxis=dict(
-                gridcolor='#252525', 
-                zerolinecolor='#444', 
-                title="Ordens Executadas",
-                tickfont=dict(size=10)
-            ),
-            yaxis=dict(
-                gridcolor='#252525', 
-                zerolinecolor='#444', 
-                title="Resultado Bruto (R$)",
-                tickfont=dict(size=10)
-            ),
-            margin=dict(l=40, r=40, t=50, b=40),
-            showlegend=False,
-            hovermode="x unified"
+            title=dict(text="Performance Acumulada (Estilo ProfitPro)", font=dict(size=18, color='#FFFFFF')),
+            plot_bgcolor='#121212', paper_bgcolor='#121212', 
+            font=dict(color='#888'),
+            xaxis=dict(gridcolor='#252525', zerolinecolor='#444', title="Ordens"),
+            yaxis=dict(gridcolor='#252525', zerolinecolor='#444', title="Resultado (R$)"),
+            margin=dict(l=40, r=40, t=50, b=40), showlegend=False, hovermode="x unified"
         )
         fig.add_hline(y=0, line_dash="dash", line_color="#555", line_width=1)
         st.plotly_chart(fig, use_container_width=True, key="chart_equity_profit")
