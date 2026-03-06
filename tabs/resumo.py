@@ -50,7 +50,7 @@ def render(df, metrics):
         st.markdown(grid_row("Prejuízo Bruto", f"R$ {gross_loss:,.2f}", "loss-val"), unsafe_allow_html=True)
         st.markdown(grid_row("Fator de Lucro", f"{profit_factor:.2f}"), unsafe_allow_html=True)
         st.markdown(grid_row("Total de Trades", f"{num_trades}"), unsafe_allow_html=True)
-        st.markdown(grid_row("Taxa de Acerto", f"{win_rate:.2f}%", "profit-val" if win_rate > 50 else "loss-val"), unsafe_allow_html=True)
+        st.markdown(grid_row("Taxa de Acerto", f"{win_rate:.2f}%", "profit-val"), unsafe_allow_html=True)
 
     with c2:
         st.markdown("<div class='grid-header'>Médias</div>", unsafe_allow_html=True)
