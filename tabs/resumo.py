@@ -34,11 +34,11 @@ def render(df, metrics):
     st.markdown("---")
 
     # Grid Layout
-    def grid_row(label, value, value_class=""):
+    def grid_row(label, value, value_class="", extra_style=""):
         return f"""
         <div class='grid-row'>
             <span class='grid-label'>{label}</span>
-            <span class='grid-value {value_class}'>{value}</span>
+            <span class='grid-value {value_class}' style='{extra_style}'>{value}</span>
         </div>
         """
 
@@ -50,7 +50,7 @@ def render(df, metrics):
         st.markdown(grid_row("Prejuízo Bruto", f"R$ {gross_loss:,.2f}", "loss-val"), unsafe_allow_html=True)
         st.markdown(grid_row("Fator de Lucro", f"{profit_factor:.2f}"), unsafe_allow_html=True)
         st.markdown(grid_row("Total de Trades", f"{num_trades}"), unsafe_allow_html=True)
-        st.markdown(grid_row("Taxa de Acerto", f"{win_rate:.2f}%", "profit-val"), unsafe_allow_html=True)
+        st.markdown(grid_row("Taxa de Acerto", f"{win_rate:.2f}%", "profit-val", extra_style="color:#00fa9a;"), unsafe_allow_html=True)
 
     with c2:
         st.markdown("<div class='grid-header'>Médias</div>", unsafe_allow_html=True)

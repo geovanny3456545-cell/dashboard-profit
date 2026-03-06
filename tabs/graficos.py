@@ -49,8 +49,8 @@ def render(df, df_raw):
         y_vals = df_chart['Cumulative'].values
         
         # Data for Positive and Negative segments
-        y_pos = [y if y >= 0 else 0 for y in y_vals]
-        y_neg = [y if y < 0 else 0 for y in y_vals]
+        y_pos = [y if y >= 0 else None for y in y_vals]
+        y_neg = [y if y < 0 else None for y in y_vals]
         
         fig = go.Figure()
         
@@ -59,6 +59,7 @@ def render(df, df_raw):
             x=x_seq, y=y_pos,
             mode='lines+markers',
             line=dict(color='#00fa9a', width=2, shape='hv'),
+            connectgaps=False,
             marker=dict(
                 size=5, 
                 color=[("#00fa9a" if y >= 0 else "rgba(0,0,0,0)") for y in y_vals],
@@ -75,6 +76,7 @@ def render(df, df_raw):
             x=x_seq, y=y_neg,
             mode='lines+markers',
             line=dict(color='#ff4d4d', width=2, shape='hv'),
+            connectgaps=False,
             marker=dict(
                 size=5, 
                 color=[("#ff4d4d" if y < 0 else "rgba(0,0,0,0)") for y in y_vals],
