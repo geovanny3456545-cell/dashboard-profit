@@ -1,28 +1,33 @@
 {
-    "title": "🏁 Fechamento de Fevereiro e Missão de Março",
-    "main_text": "Você encerrou Fevereiro com **4,49% de ROI**, vencendo o mercado e o seu próprio medo. A confiança 'saudável' que você busca não virá de uma técnica mágica, mas da **ACUMULAÇÃO DE EVIDÊNCIAS**. Cada swap bem gerido e cada lucro segurado é um tijolo na reconstrução da sua confiança.",
+    "title": "🏁 Missão de Março: O Pivô do 2:1",
+    "main_text": "Você encerrou a primeira semana de Março com um lucro robusto de **R$ 2.476,00**. A grande lição desta sexta-feira é a clareza sobre o alvo: o 3:1 pode estar paralisando sua execução. Migrar para o **2:1 como padrão de Swing** é uma decisão técnica de alta performance para reduzir o estresse e aumentar a consistência.",
     "rules": [
         {
             "id": 1,
-            "title": "GESTÃO DO TRAUMA",
-            "content": "Reconheça o medo de perder como uma cicatriz, não como um guia. Quando o medo mandar sair no BE prematuro, olhe para os números de Fevereiro: o plano técnico funciona melhor que o seu instinto de defesa."
+            "title": "A REGRA DO 2:1 (SWING SEGURO)",
+            "content": "A partir de agora, o foco principal de saída para Swings será 2x o risco (2:1). Isso exige apenas 33% de acerto para ser lucrativo e remove o peso psicológico de esperar movimentos extremos que podem não vir no mesmo dia."
         },
         {
             "id": 2,
-            "title": "R$ 500 É O NOVO PADRÃO",
-            "content": "Você provou que aguenta o risco de R$ 500. Não recue. Manter o risco constante é o que vai acalmar o seu sistema nervoso no longo prazo."
+            "title": "PRECISÃO NA SEXTA-FEIRA",
+            "content": "Evite operações 'emocionais' para bater metas mais altas. O erro de hoje (WINJ26) veio da pressão por um alvo maior. Se o 2:1 fosse o plano, a saída teria sido mais clara ou a operação evitada."
         },
         {
             "id": 3,
-            "title": "ALVO TÉCNICO > ALVO FINANCEIRO",
-            "content": "Para combater a ansiedade, esqueça o R$ na tela durante o trade. Foque em: 'Onde está a próxima resistência de Al Brooks?' Deixe o stop técnico te tirar da operação, não o seu estômago."
+            "title": "R$ 500 É O TEU FUNDAMENTO",
+            "content": "O risco de R$ 500 está consolidado. O 2:1 significa buscar R$ 1.000 por operação vencedora. Dois trades desses na semana pagam todo o seu custo de vida e geram sobra."
         },
         {
             "id": 4,
-            "title": "O RITUAL DE MARÇO",
-            "content": "Mantenha o bloqueio do horário de almoço. A paz mental que você busca no longo prazo começa com a disciplina inegociável no curto prazo."
+            "title": "GESTÃO DO TRAUMA",
+            "content": "O medo de 'devolver lucro' é combatido com alvos mais curtos e realistas (2:1). É mais fácil segurar um trade até 2:1 do que até 3:1."
+        },
+        {
+            "id": 5,
+            "title": "O RITUAL DE EXECUÇÃO",
+            "content": "Mantenha o bloqueio do horário de almoço e use o tempo extra para revisar se as entradas estão respeitando os extremos de Lateralidade ou a Urgência do Rompimento."
         }
     ],
-    "quote": "\"A confiança não é a ausência de medo, mas a certeza de que a sua técnica é maior que a sua emoção.\"",
-    "footer_success": "🏆 **Meta de Março:** Consolidar o ROI acima de 3% e reduzir em 50% as saídas em BE fora do plano."
+    "quote": "\"É melhor um 2:1 no bolso do que um 3:1 na imaginação.\"",
+    "footer_success": "🏆 **Nova Meta:** Consolidar a taxa de acerto acima de 45% operando exclusivamente alvos de 2:1 em setups Al Brooks."
 }
