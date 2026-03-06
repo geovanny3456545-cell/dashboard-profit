@@ -48,43 +48,25 @@ def render(df, df_raw):
         x_seq = np.arange(len(df_chart))
         y_vals = df_chart['Cumulative'].values
         
-        # Data for Positive and Negative segments
-        y_pos = [y if y >= 0 else None for y in y_vals]
-        y_neg = [y if y < 0 else None for y in y_vals]
+        # Consolidated Equity Chart (Single Trace for Integrity)
+        line_color = '#00fa9a' if total_pnl > 0 else '#ff4d4d' if total_pnl < 0 else '#bbbbbb'
+        fill_rgba = "0, 250, 154, 0.15" if total_pnl > 0 else "255, 77, 77, 0.15" if total_pnl < 0 else "187, 187, 187, 0.1"
         
         fig = go.Figure()
         
-        # 1. Trace for Positive Equity
+        # Chronological Equity Line
         fig.add_trace(go.Scatter(
-            x=x_seq, y=y_pos,
+            x=x_seq, y=y_vals,
             mode='lines+markers',
-            line=dict(color='#00fa9a', width=2, shape='hv'),
-            connectgaps=False,
+            line=dict(color=line_color, width=2, shape='hv'),
             marker=dict(
                 size=5, 
-                color=[("#00fa9a" if y >= 0 else "rgba(0,0,0,0)") for y in y_vals],
+                color=[("#00fa9a" if y > 0 else "#ff4d4d" if y < 0 else "#bbbbbb") for y in y_vals],
                 line=dict(width=1, color="#121212")
             ),
             fill='tozeroy',
-            fillcolor='rgba(0, 250, 154, 0.15)',
-            name="Lucro Acumulado",
-            hovertemplate="<b>Operação %{x}</b><br>Saldo: R$ %{y:,.2f}<extra></extra>"
-        ))
-        
-        # 2. Trace for Negative Equity
-        fig.add_trace(go.Scatter(
-            x=x_seq, y=y_neg,
-            mode='lines+markers',
-            line=dict(color='#ff4d4d', width=2, shape='hv'),
-            connectgaps=False,
-            marker=dict(
-                size=5, 
-                color=[("#ff4d4d" if y < 0 else "rgba(0,0,0,0)") for y in y_vals],
-                line=dict(width=1, color="#121212")
-            ),
-            fill='tozeroy',
-            fillcolor='rgba(255, 77, 77, 0.15)',
-            name="Prejuízo Acumulado",
+            fillcolor=f'rgba({fill_rgba})',
+            name="Patrimônio",
             hovertemplate="<b>Operação %{x}</b><br>Saldo: R$ %{y:,.2f}<extra></extra>"
         ))
         
