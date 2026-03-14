@@ -26,8 +26,13 @@
             "id": 5,
             "title": "GESTÃO DO TRAUMA",
             "content": "O medo de 'devolver lucro' é combatido com alvos reais (2:1). É mais fácil segurar um trade até 2:1 no 5m do que perseguir o 3:1 no 3m."
+        },
+        {
+            "id": 6,
+            "title": "A REGRA DO RESET (PÓS-ESTRESSE)",
+            "content": "Se você devolver >50% do lucro da semana anterior, você entra em 'Regime de Reset'. O R é cortado pela metade e operamos apenas 1 trade por dia no 5m até recuperar a neutralidade emocional (True Winning)."
         }
     ],
-    "quote": "\"Um trade de 2:1 no 5 minutos por dia constrói impérios; a busca pelo 3:1 no 3 minutos constrói ansiedade.\"",
-    "footer_success": "🏆 **Nova Meta:** Focar na qualidade do sinal de 5m e na saída sistemática em 2:1. Menos ruído, mais lucro."
+    "quote": "\"O lucro de hoje é apenas a estatística que compensa o stop de amanhã. Não se emocione com vitórias falsas.\"",
+    "footer_success": "🛑 **Protocolo Ativado:** Pós-perda de 2k. Foco total no 'True Winning' (seguir o plano) e não no 'False Winning' (recuperar o dinheiro)."
 }

@@ -292,14 +292,26 @@ def load_swing_trade_data():
         new_cols = ['ID', 'Data', 'Ativo', 'Extra1', 'Periodo', 'Extra2', 'Entrou', 'Resultado', 'Analista Geovanny', 'Analista Rafaella']
         if len(df.columns) >= len(new_cols):
             df.columns = new_cols[:len(df.columns)]
-        elif len(df.columns) == 9:
-            df.columns = new_cols[:9]
         
         # Clean data
         df = df.dropna(subset=['Ativo'])
         df['Ativo'] = df['Ativo'].str.strip().str.upper()
         
-        return df
+        # --- NEW DEDUPLICATION & FILTERING LOGIC ---
+        # 1. Ensure Data is datetime
+        df['Data_Dt'] = pd.to_datetime(df['Data'], dayfirst=True, errors='coerce')
+        
+        # 2. Filter for CLOSED operations
+        # User said: "considerar sempre as operações encerradas (com data de entrada e saída definidas)"
+        # Based on CSV inspection, open/tracking trades have '-', empty, or 'Acompanhando' in Resultado.
+        invalid_results = ['-', '', 'ACOMPANHANDO', 'NAN']
+        mask_closed = df['Resultado'].fillna('').str.strip().str.upper().apply(lambda x: x not in invalid_results)
+        df_closed = df[mask_closed].copy()
+        
+        # Deduplication based on ID (keep the most recent entry for that ID)
+        df_final = df_closed.drop_duplicates(subset=['ID'], keep='last')
+        
+        return df_final
     except Exception:
         return pd.DataFrame()
 
