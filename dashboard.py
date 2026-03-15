@@ -71,71 +71,102 @@ def mask_val(val, val_type="money"):
 # --- CSS STYLING ---
 st.markdown("""
 <style>
-    /* Metric Cards */
-    div[data-testid="metric-container"] {
-        background-color: #2b2b2b;
-        border: 1px solid #3e3e3e;
-        padding: 10px;
-        border-radius: 4px;
-        color: white;
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Outfit:wght@500;700&display=swap');
+
+    :root {
+        --glass-bg: rgba(255, 255, 255, 0.03);
+        --glass-border: rgba(255, 255, 255, 0.08);
+        --accent: #00aaff;
+        --success: #00fa9a;
+        --danger: #ff4d4d;
     }
-    div[data-testid="metric-container"] label { font-size: 0.8em; color: #aaa; }
-    div[data-testid="metric-container"] div[data-testid="stMetricValue"] { font-size: 1.2em; font-weight: bold; }
-    
-    /* ProfitPro Specific Colors */
-    .profit-val { color: #00fa9a; font-weight: bold; }
-    .loss-val { color: #ff4d4d; font-weight: bold; }
-    .neutral-val { color: #bbbbbb; font-weight: bold; }
-    
-    /* Calendar Modern */
-    .cal-container { font-family: 'Segoe UI', sans-serif; background-color: #1e1e1e; border: 1px solid #333; border-radius: 4px; padding: 10px; }
-    .cal-header { 
-        background-color: #111; 
-        color: #fff; 
-        font-weight: bold; 
-        text-align: center; 
-        padding: 10px;
-        border-bottom: 2px solid #333;
+
+    * { font-family: 'Inter', sans-serif; }
+    h1, h2, h3 { font-family: 'Outfit', sans-serif; }
+
+    /* Glass Cards */
+    .glass-card {
+        background: var(--glass-bg);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid var(--glass-border);
+        border-radius: 12px;
+        padding: 20px;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        margin-bottom: 20px;
+    }
+    .glass-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        border-color: rgba(0, 170, 255, 0.3);
+    }
+    .glass-label {
+        font-size: 0.75em;
         text-transform: uppercase;
-        letter-spacing: 1px;
+        letter-spacing: 1.5px;
+        color: #888;
+        font-weight: 600;
+        display: block;
+        margin-bottom: 8px;
     }
-    .cal-table { width: 100%; border-collapse: separate; border-spacing: 2px; }
-    .cal-cell {
-        background-color: #252525;
-        border-radius: 4px;
-        vertical-align: top;
-        padding: 5px;
-        height: 80px;
-        width: 14.28%;
-        position: relative;
+    .glass-value {
+        font-size: 1.8em;
+        font-weight: 700;
+        color: #fff;
+        margin-bottom: 4px;
+        font-family: 'Outfit', sans-serif;
     }
-    .cal-cell:hover { background-color: #333; }
-    .day-num { font-size: 0.9em; color: #888; margin-bottom: 5px; text-align: right; }
-    .day-val { font-size: 0.85em; font-weight: bold; text-align: center; margin-top: 5px; display: block; }
-    .val-pos { color: #00fa9a; }
-    .val-neg { color: #ff4d4d; }
-    .note-indicator { 
-        position: absolute; bottom: 5px; right: 5px; 
-        width: 6px; height: 6px; background-color: #ea4335; border-radius: 50%; 
+    .glass-subtitle {
+        font-size: 0.85em;
+        color: #666;
     }
+
+    /* Metric Containers Overrides */
+    div[data-testid="metric-container"] {
+        background: var(--glass-bg);
+        border: 1px solid var(--glass-border);
+        border-radius: 12px;
+        padding: 15px;
+    }
+
+    /* ProfitPro Specific Colors */
+    .profit-val { color: var(--success) !important; font-weight: bold; }
+    .loss-val { color: var(--danger) !important; font-weight: bold; }
+    .neutral-val { color: #888 !important; font-weight: bold; }
     
-    /* Grid Layout */
-    .grid-row { display: flex; justify-content: space-between; border-bottom: 1px solid #444; padding: 8px 0; font-size: 0.9em; }
-    .grid-label { color: #aaa; }
-    .grid-value { font-weight: bold; text-align: right; }
-    .grid-header { font-size: 1.1em; font-weight: bold; margin-bottom: 10px; color: #00aaff; border-bottom: 2px solid #00aaff; padding-bottom: 5px; }
-    
-    /* Tabs */
-    .stTabs [data-baseweb="tab-list"] { gap: 20px; border-bottom: 1px solid #444; }
-    .stTabs [data-baseweb="tab"] { height: 40px; white-space: pre-wrap; background-color: transparent; border: none; color: #aaa; font-size: 0.9em; }
-    .stTabs [aria-selected="true"] { background-color: transparent; color: #fff; border-bottom: 2px solid #00aaff; font-weight: bold; }
-    
-    /* Scrollbar */
-    ::-webkit-scrollbar { width: 8px; height: 8px; }
-    ::-webkit-scrollbar-track { background: #1e1e1e; }
-    ::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
-    ::-webkit-scrollbar-thumb:hover { background: #555; }
+    /* Tabs Sidebar / Nav */
+    .stTabs [data-baseweb="tab-list"] { 
+        gap: 10px; 
+        border-bottom: 1px solid var(--glass-border);
+        padding-bottom: 5px;
+    }
+    .stTabs [data-baseweb="tab"] { 
+        border-radius: 8px 8px 0 0;
+        padding: 10px 20px;
+        transition: all 0.2s ease;
+    }
+    .stTabs [aria-selected="true"] { 
+        background-color: rgba(0, 170, 255, 0.1);
+        color: var(--accent) !important;
+    }
+
+    /* Hide redundant elements */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+
+    /* Custom Grid Layout */
+    .grid-row { 
+        display: flex; 
+        justify-content: space-between; 
+        border-bottom: 1px solid rgba(255,255,255,0.05); 
+        padding: 12px 0; 
+        font-size: 0.9em; 
+    }
+    .grid-label { color: #888; }
+    .grid-value { font-weight: 600; text-align: right; }
 </style>
+""", unsafe_allow_html=True)
 """, unsafe_allow_html=True)
 
 # Sidebar: Refresh Button

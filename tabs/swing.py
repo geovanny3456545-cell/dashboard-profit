@@ -3,6 +3,7 @@ import pandas as pd
 import plotly.graph_objects as go
 from utils.data_loader import fetch_real_ohlc
 from utils.sector_map import get_sector
+from utils.components import section_header, status_badge
 
 def render_sparkline(symbol, period):
     """Generates a tiny candlestick chart using real B3 market data."""
@@ -112,7 +113,7 @@ def render(df_swing, mask_val):
         st.info("Sem dados de Swing Trade para exibir.")
         return
 
-    st.markdown("## 📈 Análise e Operações: Swing Trade")
+    section_header("Análise e Operações", icon="📅")
     
     # 1. Sector Logic & Alerts
     active_mask = (df_swing['Entrou'].str.upper() == 'SIM') & (df_swing['Resultado'].isin(['-', '', 'NAN', None]))
@@ -138,7 +139,7 @@ def render(df_swing, mask_val):
             st.caption("Evite sobreposição para gerenciar o risco sistêmico.")
 
     # 2. Priority View: Active Trades and Monitored Analyses
-    st.markdown("### 🎯 Foco Principal: Acompanhando e Aberta")
+    st.markdown("### 🎯 Foco Principal")
     
     # Filter only for 'Acompanhando' or 'Aberta'
     status_filter = df_swing['Resultado'].str.strip().str.upper().isin(['ACOMPANHANDO', 'ABERTA'])
@@ -150,6 +151,12 @@ def render(df_swing, mask_val):
     for idx, row in latest_rows.iterrows():
         status = row['Resultado'] if row['Resultado'] != '-' else 'EM ANÁLISE'
         title_ativo = mask_val(row['Ativo'], "text")
+        
+        # Determine status badge variant
+        var = "info"
+        if "ABERTA" in str(status).upper(): var = "success"
+        elif "STOP" in str(status).upper(): var = "danger"
+        
         with st.expander(f"{title_ativo} | {row['Periodo']} | Status: {status}", expanded=True):
             col1, col2, col3 = st.columns([1.5, 2, 3])
             with col1:

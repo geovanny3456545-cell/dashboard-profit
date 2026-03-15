@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 import datetime
+from utils.components import glass_card, section_header, status_badge
 
 def render(df, metrics, mask_val):
     if df.empty:
@@ -33,16 +34,23 @@ def render(df, metrics, mask_val):
     monthly_net = df_month['Res_Numeric'].sum()
     monthly_gross = df_month[df_month['Res_Numeric'] > 0]['Res_Numeric'].sum()
 
-    # --- TAB: RESUMO (Legacy Nelogica Layout) ---
+    # --- TAB: RESUMO (Premium Glassmorphism Layout) ---
+    section_header("Visão Geral", icon="📈")
+
     # Top Headline Stats
-    h1, h2, h3 = st.columns([2, 5, 2])
+    h1, h2, h3 = st.columns([1, 1, 1])
     with h2: 
         lbl_col = "profit-val" if total_pnl >= 0 else "loss-val"
         display_pnl = mask_val(total_pnl)
         if isinstance(display_pnl, (int, float)):
             display_pnl = f"R$ {display_pnl:,.2f}"
-        st.markdown(f"<div style='text-align:center; font-size:2.5em; margin-bottom:10px;' class='{lbl_col}'>{display_pnl}</div>", unsafe_allow_html=True)
-        st.markdown("<div style='text-align:center; color:#888; margin-top:-15px;'>Resultado Total</div>", unsafe_allow_html=True)
+            
+        st.markdown(glass_card(
+            "Resultado Total", 
+            display_pnl, 
+            label_class=lbl_col,
+            extra_style="text-align: center; font-size: 2.2em;"
+        ), unsafe_allow_html=True)
 
     # Monthly Gauge Row
     st.markdown("---")
@@ -92,7 +100,9 @@ def render(df, metrics, mask_val):
 
     st.markdown("---")
 
-    # Grid Layout
+    # Grid Layout Section
+    section_header("Estatísticas Detalhadas", icon="📊")
+    
     def grid_row(label, value, value_class="", extra_style=""):
         return f"""
         <div class='grid-row'>
@@ -104,7 +114,8 @@ def render(df, metrics, mask_val):
     c1, c2, c3 = st.columns(3)
 
     with c1:
-        st.markdown("<div class='grid-header'>Estatísticas Principais</div>", unsafe_allow_html=True)
+        st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+        st.markdown("<div class='grid-header' style='font-size: 1.1em; color: #00aaff; border-bottom: 2px solid #00aaff; padding-bottom: 5px; margin-bottom: 15px;'>Estatísticas Principais</div>", unsafe_allow_html=True)
         st.markdown(grid_row("Lucro Bruto", f"R$ {gross_profit:,.2f}", "profit-val"), unsafe_allow_html=True)
         st.markdown(grid_row("Prejuízo Bruto", f"R$ {gross_loss:,.2f}", "loss-val"), unsafe_allow_html=True)
         st.markdown(grid_row("Fator de Lucro", f"{profit_factor:.2f}"), unsafe_allow_html=True)
@@ -126,15 +137,21 @@ def render(df, metrics, mask_val):
             </div>
             """, unsafe_allow_html=True)
 
+        st.markdown('</div>', unsafe_allow_html=True)
+
     with c2:
-        st.markdown("<div class='grid-header'>Médias</div>", unsafe_allow_html=True)
+        st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+        st.markdown("<div class='grid-header' style='font-size: 1.1em; color: #00aaff; border-bottom: 2px solid #00aaff; padding-bottom: 5px; margin-bottom: 15px;'>Médias</div>", unsafe_allow_html=True)
         st.markdown(grid_row("Média Lucro/Prejuízo", f"R$ {avg_pnl:,.2f}", "profit-val" if avg_pnl > 0 else "loss-val"), unsafe_allow_html=True)
         st.markdown(grid_row("Média de Ganho", f"R$ {avg_win:,.2f}", "profit-val"), unsafe_allow_html=True)
         st.markdown(grid_row("Média de Perda", f"R$ {avg_loss:,.2f}", "loss-val"), unsafe_allow_html=True)
         st.markdown(grid_row("Payoff", f"{payoff:.2f}"), unsafe_allow_html=True)
 
+        st.markdown('</div>', unsafe_allow_html=True)
+
     with c3:
-        st.markdown("<div class='grid-header'>Extremos</div>", unsafe_allow_html=True)
+        st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+        st.markdown("<div class='grid-header' style='font-size: 1.1em; color: #00aaff; border-bottom: 2px solid #00aaff; padding-bottom: 5px; margin-bottom: 15px;'>Extremos</div>", unsafe_allow_html=True)
         st.markdown(grid_row("Maior Ganho", f"R$ {max_win:,.2f}", "profit-val"), unsafe_allow_html=True)
         st.markdown(grid_row("Maior Perda", f"R$ {max_loss:,.2f}", "loss-val"), unsafe_allow_html=True)
         st.markdown(grid_row("Drawdown Máximo", f"R$ {max_dd:,.2f}", "loss-val"), unsafe_allow_html=True)
@@ -145,6 +162,7 @@ def render(df, metrics, mask_val):
         st.markdown("<div class='grid-header'>Monitor de Disciplina (Substack)</div>", unsafe_allow_html=True)
         streak = metrics.get('discipline_streak', 0)
         st.markdown(grid_row("Trades sem Fading", f"{streak} 🔥", "profit-val" if streak > 5 else ""), unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
     # --- LATEST REPORT HIGHLIGHT ---
     import os

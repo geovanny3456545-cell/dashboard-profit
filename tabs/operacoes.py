@@ -6,6 +6,7 @@ from utils.data_loader import fetch_real_ohlc
 import datetime
 import yfinance as yf
 import numpy as np
+from utils.components import section_header, status_badge, glass_card
 
 @st.cache_data(ttl=3600)
 def get_batch_market_data(proxies_to_fetch):
@@ -35,61 +36,39 @@ def render(df, df_raw, mask_val):
     num_trades = len(df)
     win_rate = (len(df[df['Res_Numeric'] > 0]) / num_trades * 100) if num_trades > 0 else 0
     
-    # --- PROFIT PRO HEADER STRIP ---
+    section_header("Performance do Dia", icon="⚡")
+
     s_res_liq = mask_val(total_pnl) if isinstance(mask_val(total_pnl), str) else f"R$ {total_pnl:,.2f}"
-    s_res_tot = mask_val(total_pnl) if isinstance(mask_val(total_pnl), str) else f"R$ {total_pnl:,.2f}"
-    s_lucro = mask_val(gross_profit) if isinstance(mask_val(gross_profit), str) else f"R$ {gross_profit:,.2f}"
-    s_prej = mask_val(gross_loss) if isinstance(mask_val(gross_loss), str) else f"R$ {gross_loss:,.2f}"
-    s_ops = f"{num_trades}"
-    s_win = f"{win_rate:.2f}%"
-    s_custos = "R$ 0,00" # Placeholder
     
-    # Colors
-    c_res = "#00fa9a" if total_pnl > 0 else "#ff4d4d" if total_pnl < 0 else "#bbbbbb"
-    
-    html_strip = f"""
-    <style>
-        .strip-container {{
-            display: flex;
-            flex-direction: row;
-            background-color: #262626;
-            padding: 8px 15px;
-            border-radius: 4px;
-            margin-bottom: 10px;
-            align-items: center;
-            font-family: 'Segoe UI', sans-serif;
-            font-size: 14px;
-            color: #ccc;
-            gap: 15px;
-            overflow-x: auto;
-        }}
-        .strip-item {{
-            display: flex;
-            flex-direction: row;
-            gap: 5px;
-            white-space: nowrap;
-        }}
-        .strip-val {{ font-weight: bold; }}
-        .color-pos {{ color: #00fa9a; }}
-        .color-neg {{ color: #ff6b6b; }}
-    </style>
-    <div class="strip-container">
-        <div class="strip-item">Resultado Liq Tot. <span class="strip-val" style="color:{c_res}">{s_res_liq}</span></div>
-        <div style="width:1px; height:15px; background:#444;"></div>
-        <div class="strip-item">Resultado Total <span class="strip-val" style="color:{c_res}">{s_res_tot}</span></div>
-        <div style="width:1px; height:15px; background:#444;"></div>
-        <div class="strip-item">Lucro Bruto <span class="strip-val color-pos">{s_lucro}</span></div>
-        <div style="width:1px; height:15px; background:#444;"></div>
-        <div class="strip-item">Prejuízo Bruto <span class="strip-val color-neg">{s_prej}</span></div>
-        <div style="width:1px; height:15px; background:#444;"></div>
-        <div class="strip-item">Operações <span class="strip-val">{s_ops}</span></div>
-        <div style="width:1px; height:15px; background:#444;"></div>
-        <div class="strip-item">Vencedoras <span class="strip-val">{s_win}</span></div>
-        <div style="width:1px; height:15px; background:#444;"></div>
-        <div class="strip-item">Custos <span class="strip-val">{s_custos}</span></div>
+    # Premium Header Container
+    st.markdown(f"""
+    <div class="glass-card" style="padding: 15px; margin-bottom: 25px; border-left: 5px solid {c_res};">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
+            <div>
+                <label class="glass-label">Resultado Líquido</label>
+                <div class="glass-value" style="color: {c_res}; font-size: 2.2em;">{s_res_liq}</div>
+            </div>
+            <div style="display: flex; gap: 30px;">
+                <div>
+                    <label class="glass-label">Operações</label>
+                    <div style="font-size: 1.2em; font-weight: 700;">{s_ops}</div>
+                </div>
+                <div>
+                    <label class="glass-label">Taxa de Acerto</label>
+                    <div style="font-size: 1.2em; font-weight: 700; color: #00fa9a;">{s_win}</div>
+                </div>
+                <div>
+                    <label class="glass-label">Lucro Bruto</label>
+                    <div style="font-size: 1.2em; font-weight: 700; color: #00fa9a;">{s_lucro}</div>
+                </div>
+                <div>
+                    <label class="glass-label">Prejuízo Bruto</label>
+                    <div style="font-size: 1.2em; font-weight: 700; color: #ff6b6b;">{s_prej}</div>
+                </div>
+            </div>
+        </div>
     </div>
-    """
-    st.markdown(html_strip, unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
     # --- RECENT OPERATIONS CARDS (Horizontal Layout) ---
     if not df.empty:
@@ -117,12 +96,16 @@ def render(df, df_raw, mask_val):
             is_expanded = (idx < 5)
             
             title_ativo = mask_val(row['Ativo'], "text")
+            side = str(row.get('Lado', 'C')).strip().upper()
+            badge_var = "success" if side == 'C' else "danger"
+            badge_text = "COMPRA" if side == 'C' else "VENDA"
+            
             with st.expander(f"{title_ativo} | {mask_val(row['Abertura'], 'time')} | Resultado: {mask_val(row['Res. Operação'])}", expanded=is_expanded):
                 col1, col2, col3 = st.columns([1.5, 3, 2.5])
                 
                 with col1:
+                    st.markdown(status_badge(badge_text, badge_var), unsafe_allow_html=True)
                     st.metric("Ativo", row['Ativo'])
-                    st.write(f"**Lado:** {row['Lado']}")
                     st.write(f"**Qtd:** {row['Qtd']}")
                     st.caption(f"📅 {row['Abertura']}")
                 
