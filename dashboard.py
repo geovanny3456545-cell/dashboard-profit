@@ -167,7 +167,6 @@ st.markdown("""
     .grid-value { font-weight: 600; text-align: right; }
 </style>
 """, unsafe_allow_html=True)
-""", unsafe_allow_html=True)
 
 # Sidebar: Refresh Button
 with st.sidebar:

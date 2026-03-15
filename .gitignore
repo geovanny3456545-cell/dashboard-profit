@@ -8,9 +8,7 @@ __pycache__/
 _agents/
 _agent/
 *.bat
-*.csv
 *.png
-*.md
 !requirements.txt
 !README.md
 !walkthrough.md
@@ -20,6 +18,7 @@ _agent/
 tmp/
 data/
 Atualizações/
+
 # Scripts auxiliares e de depuração
 debug_*.py
 test_*.py
@@ -32,13 +31,23 @@ temp_*.py
 find_*.py
 identify_*.py
 read_*.py
+bridge_inspection.py
+brooks_audit.py
+append_report.py
+consolidate_*.py
+final_*.py
+install_*.py
+list_*.py
+migrate_*.py
+search_*.py
+simple_*.py
+update_report_*.py
+update_reports.py
+diagnose_loader*.py
+print_pattern.py
+
+# Arquivos de dados e resultados
 *.csv
 *.html
-*.bat
-all_files.csv
-consolidado_raw.csv
-clean_consolidado.csv
-dw_consolidado_raw.csv
-trading_data_*.csv
-week_data_*.csv
-weekly_final_summary.csv
+*.json
+!data/README.md # Caso queira manter a pasta no git mas sem dados
