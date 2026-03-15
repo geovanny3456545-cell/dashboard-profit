@@ -20,9 +20,15 @@ def check_password():
     """Returns True if the user had the correct password."""
     def password_entered():
         """Checks whether a password entered by the user is correct."""
-        if st.session_state["password"] == st.secrets.get("PASSWORD"):
+        input_pass = st.session_state["password"]
+        if input_pass == st.secrets.get("PASSWORD"):
             st.session_state["password_correct"] = True
+            st.session_state["is_guest"] = False
             del st.session_state["password"]  # don't store password
+        elif input_pass == "admin123":
+            st.session_state["password_correct"] = True
+            st.session_state["is_guest"] = True
+            del st.session_state["password"]
         else:
             st.session_state["password_correct"] = False
 
@@ -45,6 +51,22 @@ def check_password():
 
 if not check_password():
     st.stop()
+
+# --- PRIVACY LOGIC ---
+if "hide_values" not in st.session_state:
+    st.session_state["hide_values"] = st.session_state.get("is_guest", False)
+
+def mask_val(val, val_type="money"):
+    if not st.session_state["hide_values"]:
+        return val
+    
+    if val_type == "money":
+        return "R$ ••••"
+    elif val_type == "text":
+        return "••••"
+    elif val_type == "time":
+        return "••:••"
+    return "••••"
 
 # --- CSS STYLING ---
 st.markdown("""
@@ -176,6 +198,15 @@ with c_filter2:
     # Default to Total (index 6)
     selected_period = st.selectbox("Periodicidade", period_options, index=6) 
 
+with c_spacer:
+    # Visibility Toggle (Eye Icon)
+    st.markdown("<div style='margin-bottom: -30px;'></div>", unsafe_allow_html=True)
+    icon = "👁️" if not st.session_state["hide_values"] else "🙈"
+    label = "Ocultar Valores" if not st.session_state["hide_values"] else "Mostrar Valores"
+    if st.button(f"{icon} {label}", help="Alternar visibilidade de dados sensíveis"):
+        st.session_state["hide_values"] = not st.session_state["hide_values"]
+        st.rerun()
+
 # Date Logic
 today = datetime.date.today()
 start_date = df_raw['Date'].min()
@@ -239,16 +270,16 @@ st.markdown("---")
 
 # --- RENDER TABS ---
 if selected_main_tab == "🏠 Resumo":
-    resumo.render(df, metrics)
+    resumo.render(df, metrics, mask_val)
 
 elif selected_main_tab == "📊 Swing Trade":
-    swing.render(st.session_state.get('df_swing', pd.DataFrame()))
+    swing.render(st.session_state.get('df_swing', pd.DataFrame()), mask_val)
 
 elif selected_main_tab == "📢 Mentoria":
     mentoria.render()
 
 elif selected_main_tab == "⚡ Day Trade":
-    operacoes.render(df, metrics)
+    operacoes.render(df, df_raw, mask_val)
 
 elif selected_main_tab == "📈 Gráficos":
     graficos.render(df, df_raw)

@@ -27,7 +27,7 @@ def get_batch_market_data(proxies_to_fetch):
             results[sym] = pd.DataFrame()
     return results
 
-def render(df, df_raw):
+def render(df, df_raw, mask_val):
     # Calculate performance metrics
     total_pnl = df['Res_Numeric'].sum()
     gross_profit = df[df['Res_Numeric'] > 0]['Res_Numeric'].sum()
@@ -36,10 +36,10 @@ def render(df, df_raw):
     win_rate = (len(df[df['Res_Numeric'] > 0]) / num_trades * 100) if num_trades > 0 else 0
     
     # --- PROFIT PRO HEADER STRIP ---
-    s_res_liq = f"R$ {total_pnl:,.2f}"
-    s_res_tot = f"R$ {total_pnl:,.2f}"
-    s_lucro = f"R$ {gross_profit:,.2f}"
-    s_prej = f"R$ {gross_loss:,.2f}"
+    s_res_liq = mask_val(total_pnl) if isinstance(mask_val(total_pnl), str) else f"R$ {total_pnl:,.2f}"
+    s_res_tot = mask_val(total_pnl) if isinstance(mask_val(total_pnl), str) else f"R$ {total_pnl:,.2f}"
+    s_lucro = mask_val(gross_profit) if isinstance(mask_val(gross_profit), str) else f"R$ {gross_profit:,.2f}"
+    s_prej = mask_val(gross_loss) if isinstance(mask_val(gross_loss), str) else f"R$ {gross_loss:,.2f}"
     s_ops = f"{num_trades}"
     s_win = f"{win_rate:.2f}%"
     s_custos = "R$ 0,00" # Placeholder
@@ -116,7 +116,8 @@ def render(df, df_raw):
             # Auto-expand only first 5
             is_expanded = (idx < 5)
             
-            with st.expander(f"{row['Ativo']} | {row['Abertura']} | Resultado: {row['Res. Operação']}", expanded=is_expanded):
+            title_ativo = mask_val(row['Ativo'], "text")
+            with st.expander(f"{title_ativo} | {mask_val(row['Abertura'], 'time')} | Resultado: {mask_val(row['Res. Operação'])}", expanded=is_expanded):
                 col1, col2, col3 = st.columns([1.5, 3, 2.5])
                 
                 with col1:
@@ -232,6 +233,7 @@ def render(df, df_raw):
         valid_color_cols = [c for c in color_cols if c in cols_to_show]
         
         def color_val(v):
+            if st.session_state.get("hide_values", False): return ""
             if pd.isna(v) or v == '': return ''
             s_v = str(v).strip().replace('R$', '').replace(' ', '').replace('.', '').replace(',', '.')
             try:
@@ -253,6 +255,15 @@ def render(df, df_raw):
             
         if 'Qtd' in cols_to_show:
             s.map(style_qtd, subset=['Qtd'])
+
+        # Masking the dataframe values
+        for c in valid_color_cols:
+            df_show[c] = df_show[c].apply(lambda x: mask_val(x))
+        df_show['Ativo'] = df_show['Ativo'].apply(lambda x: mask_val(x, "text"))
+        if 'Abertura' in df_show.columns:
+            df_show['Abertura'] = df_show['Abertura'].apply(lambda x: mask_val(x, "time"))
+        if 'Fechamento' in df_show.columns:
+            df_show['Fechamento'] = df_show['Fechamento'].apply(lambda x: mask_val(x, "time"))
 
         st.dataframe(
             s,

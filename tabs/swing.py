@@ -103,7 +103,7 @@ def render_sparkline(symbol, period):
     )
     return fig
 
-def render(df_swing):
+def render(df_swing, mask_val):
     """
     Renders the Swing Trade analysis tab.
     df_swing: Swing trade data from Google Sheets (GID 1798886578)
@@ -149,10 +149,11 @@ def render(df_swing):
     
     for idx, row in latest_rows.iterrows():
         status = row['Resultado'] if row['Resultado'] != '-' else 'EM ANÁLISE'
-        with st.expander(f"{row['Ativo']} | {row['Periodo']} | Status: {status}", expanded=True):
+        title_ativo = mask_val(row['Ativo'], "text")
+        with st.expander(f"{title_ativo} | {row['Periodo']} | Status: {status}", expanded=True):
             col1, col2, col3 = st.columns([1.5, 2, 3])
             with col1:
-                st.metric("Ativo", row['Ativo'])
+                st.metric("Ativo", mask_val(row['Ativo'], "text"))
                 st.caption(f"📅 {row['Data']}")
             with col2:
                 # Metric combined with Mini-Graph
@@ -199,20 +200,26 @@ def render(df_swing):
     # User said: "vão sendo apagadas caso não tenham sido executadas" in the sheet, 
     # but in dashboard we just show what exists.
     
+    # Masking for history dataframe
+    history_to_display = history_df[['Data', 'Ticker', 'Timeframe', 'Executou', 'Resultado (P/L)', 'Geovanny', 'Rafaella']].copy()
+    history_to_display['Ticker'] = history_to_display['Ticker'].apply(lambda x: mask_val(x, "text"))
+    history_to_display['Resultado (P/L)'] = history_to_display['Resultado (P/L)'].apply(lambda x: mask_val(x))
+
     st.dataframe(
-        history_df[['Data', 'Ticker', 'Timeframe', 'Executou', 'Resultado (P/L)', 'Geovanny', 'Rafaella']],
+        history_to_display,
         use_container_width=True,
         hide_index=True
     )
 
     # 4. Summary Stats (Optional but useful)
     with st.sidebar:
-        st.markdown("---")
-        st.markdown("### Swing Stats")
-        total_trades = len(df_swing[df_swing['Resultado'] != '-'])
-        gains = len(df_swing[df_swing['Resultado'].str.contains('GAIN', case=False, na=False)])
-        losses = len(df_swing[df_swing['Resultado'].str.contains('LOSS', case=False, na=False)])
-        
-        if total_trades > 0:
-            st.write(f"**Total Realizado:** {total_trades}")
-            st.progress(gains/total_trades, text=f"Win Rate: {gains/total_trades:.1%}")
+        if not st.session_state.get("hide_values", False):
+            st.markdown("---")
+            st.markdown("### Swing Stats")
+            total_trades = len(df_swing[df_swing['Resultado'] != '-'])
+            gains = len(df_swing[df_swing['Resultado'].str.contains('GAIN', case=False, na=False)])
+            losses = len(df_swing[df_swing['Resultado'].str.contains('LOSS', case=False, na=False)])
+            
+            if total_trades > 0:
+                st.write(f"**Total Realizado:** {total_trades}")
+                st.progress(gains/total_trades, text=f"Win Rate: {gains/total_trades:.1%}")

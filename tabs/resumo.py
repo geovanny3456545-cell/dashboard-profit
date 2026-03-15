@@ -1,7 +1,9 @@
 import streamlit as st
 import pandas as pd
+import plotly.graph_objects as go
+import datetime
 
-def render(df, metrics):
+def render(df, metrics, mask_val):
     if df.empty:
         st.info("Sem dados para exibir no momento.")
         return
@@ -23,13 +25,70 @@ def render(df, metrics):
     max_l_streak = metrics['max_l_streak']
     max_dd = metrics['max_dd']
 
+    # --- MONTHLY PROFIT GAUGE DATA ---
+    today = datetime.date.today()
+    this_month_mask = (df['Date'].apply(lambda x: x.year) == today.year) & (df['Date'].apply(lambda x: x.month) == today.month)
+    df_month = df[this_month_mask]
+    
+    monthly_net = df_month['Res_Numeric'].sum()
+    monthly_gross = df_month[df_month['Res_Numeric'] > 0]['Res_Numeric'].sum()
+
     # --- TAB: RESUMO (Legacy Nelogica Layout) ---
     # Top Headline Stats
     h1, h2, h3 = st.columns([2, 5, 2])
     with h2: 
         lbl_col = "profit-val" if total_pnl >= 0 else "loss-val"
-        st.markdown(f"<div style='text-align:center; font-size:2.5em; margin-bottom:10px;' class='{lbl_col}'>R$ {total_pnl:,.2f}</div>", unsafe_allow_html=True)
+        display_pnl = mask_val(total_pnl)
+        if isinstance(display_pnl, (int, float)):
+            display_pnl = f"R$ {display_pnl:,.2f}"
+        st.markdown(f"<div style='text-align:center; font-size:2.5em; margin-bottom:10px;' class='{lbl_col}'>{display_pnl}</div>", unsafe_allow_html=True)
         st.markdown("<div style='text-align:center; color:#888; margin-top:-15px;'>Resultado Total</div>", unsafe_allow_html=True)
+
+    # Monthly Gauge Row
+    st.markdown("---")
+    g1, g2, g3 = st.columns([1, 2, 1])
+    with g2:
+        if not df_month.empty:
+            # Masking for gauge
+            display_net = mask_val(monthly_net)
+            display_title = "Lucro Real vs Rendimento (Mês)" if not st.session_state["hide_values"] else "Performance Mensal"
+            
+            fig = go.Figure(go.Indicator(
+                mode = "gauge+number",
+                value = monthly_net if not st.session_state["hide_values"] else 0,
+                title = {'text': display_title, 'font': {'size': 18, 'color': '#00aaff'}},
+                number = {'prefix': "R$ ", 'font': {'size': 20}, 'valueformat': ",.2f"} if not st.session_state["hide_values"] else {'valueformat': ""},
+                gauge = {
+                    'axis': {'range': [None, max(monthly_gross, 1000)], 'tickwidth': 1, 'tickcolor': "#444"},
+                    'bar': {'color': "#00fa9a" if monthly_net >= 0 else "#ff4d4d"},
+                    'bgcolor': "#1e1e1e",
+                    'borderwidth': 2,
+                    'bordercolor': "#444",
+                    'steps': [
+                        {'range': [0, monthly_gross], 'color': 'rgba(0, 250, 154, 0.1)'}
+                    ],
+                    'threshold': {
+                        'line': {'color': "white", 'width': 4},
+                        'thickness': 0.75,
+                        'value': monthly_gross
+                    }
+                }
+            ))
+            
+            fig.update_layout(
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                font={'color': "white", 'family': "Arial"},
+                height=250,
+                margin=dict(l=20, r=20, t=50, b=20)
+            )
+            
+            if st.session_state["hide_values"]:
+                fig.add_annotation(text="VALORES OCULTOS", x=0.5, y=0.4, showarrow=False, font=dict(size=20, color="gray"))
+
+            st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+        else:
+            st.info("Aguardando operações este mês para o medidor.")
 
     st.markdown("---")
 
@@ -38,7 +97,7 @@ def render(df, metrics):
         return f"""
         <div class='grid-row'>
             <span class='grid-label'>{label}</span>
-            <span class='grid-value {value_class}' style='{extra_style}'>{value}</span>
+            <span class='grid-value {value_class}' style='{extra_style}'>{mask_val(value) if "R$" in str(value) else value}</span>
         </div>
         """
 
