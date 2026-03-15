@@ -174,13 +174,17 @@ def render(df_swing, mask_val):
                 )
                 st.write(f"**Lado:** {row['Extra1'] if pd.notna(row['Extra1']) else 'N/A'}")
             with col3:
+                is_hidden = st.session_state.get("hide_values", False)
+                
                 if pd.notna(row['Analista Geovanny']) and str(row['Analista Geovanny']).strip() != '-':
-                    st.write("**👨‍💻 Analista Geovanny:**")
-                    st.info(row['Analista Geovanny'])
+                    label = "Analista G" if not is_hidden else "Analista 1"
+                    st.write(f"**👨‍💻 {label}:**")
+                    st.info(row['Analista Geovanny'] if not is_hidden else "Observação oculta (Modo Convidado)")
                 
                 if pd.notna(row['Analista Rafaella']) and str(row['Analista Rafaella']).strip() != '-':
-                    st.write("**👩‍💻 Analista Rafaella:**")
-                    st.success(row['Analista Rafaella'])
+                    label = "Analista R" if not is_hidden else "Analista 2"
+                    st.write(f"**👩‍💻 {label}:**")
+                    st.success(row['Analista Rafaella'] if not is_hidden else "Observação oculta (Modo Convidado)")
                 
                 if (pd.isna(row['Analista Geovanny']) or str(row['Analista Geovanny']).strip() == '-') and \
                    (pd.isna(row['Analista Rafaella']) or str(row['Analista Rafaella']).strip() == '-'):
@@ -211,6 +215,11 @@ def render(df_swing, mask_val):
     history_to_display = history_df[['Data', 'Ticker', 'Timeframe', 'Executou', 'Resultado (P/L)', 'Geovanny', 'Rafaella']].copy()
     history_to_display['Ticker'] = history_to_display['Ticker'].apply(lambda x: mask_val(x, "text"))
     history_to_display['Resultado (P/L)'] = history_to_display['Resultado (P/L)'].apply(lambda x: mask_val(x))
+    
+    if st.session_state.get("hide_values", False):
+        history_to_display['Geovanny'] = "Oculto"
+        history_to_display['Rafaella'] = "Oculto"
+        history_to_display.columns = ['Data', 'Ticker', 'Timeframe', 'Executou', 'Resultado (P/L)', 'Analista 1', 'Analista 2']
 
     st.dataframe(
         history_to_display,
