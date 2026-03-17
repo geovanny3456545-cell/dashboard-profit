@@ -94,16 +94,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if len(parts) == 5:
         try:
             descricao, categoria, prioridade, pagamento, valor_str = parts
-            
-            # Limpeza robusta do valor (R$ 50,00 -> 50.0)
             clean_valor = valor_str.replace('R$', '').replace(' ', '').replace('.', '').replace(',', '.')
             valor = float(clean_valor)
             
             now = datetime.now()
             dia = now.strftime("%d/%m/%Y")
             hora = now.strftime("%H:%M:%S")
+            month_ref = now.strftime("%m-%Y")
             
-            # Salvar no Google Sheets
+            # Conexão com Sheets
             client = get_gspread_client()
             spreadsheet = client.open_by_key(SHEET_ID)
             
@@ -119,14 +118,34 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 sheet_consolidado = spreadsheet.add_worksheet(title="Consolidado", rows="1000", cols="9")
                 headers = ["Dia", "Hora", "Usuário", "Descrição", "Categoria", "Prioridade", "Pagamento", "Valor", "Mês_Ref"]
                 sheet_consolidado.append_row(headers)
-            
-            # Na aba consolidada, adicionamos o mês de referência para filtros
-            month_ref = now.strftime("%m-%Y")
-            row_cons = row + [month_ref]
-            sheet_consolidado.append_row(row_cons)
-            
-            await update.message.reply_text(f"✅ Gasto anotado com sucesso!\n📍 {dia} às {hora}\n📝 {descricao}: R$ {valor:.2f}")
-            logger.info(f"Gasto salvo: {row_cons}")
+            sheet_consolidado.append_row(row + [month_ref])
+
+            # 3. CÁLCULO DE SALDO (REAL-TIME)
+            saldo_info = ""
+            try:
+                plan_sheet = spreadsheet.worksheet("Planejamento")
+                plan_data = plan_sheet.get_all_records()
+                meta = next((float(str(item['Gasto Máximo Mensal']).replace(',', '.')) for item in plan_data if item['Categoria'].lower() == categoria.lower()), 0.0)
+                
+                if meta > 0:
+                    records = sheet_mensal.get_all_records()
+                    total_cat = sum(float(str(r['Valor']).replace(',', '.')) for r in records if str(r['Categoria']).lower() == categoria.lower())
+                    restante = meta - total_cat
+                    saldo_info = f"\n\n💰 <b>Saldo em {categoria}:</b>\nMeta: R$ {meta:.2f}\nRestante: R$ {restante:.2f}"
+                    if restante < 0:
+                        saldo_info += " ⚠️ (Limite Excedido!)"
+            except Exception as e:
+                logger.error(f"Erro saldo: {e}")
+
+            link_sheet = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/edit"
+            response = (
+                f"✅ <b>Gasto anotado!</b>\n"
+                f"📝 {descricao}: R$ {valor:.2f}\n"
+                f"📍 {dia} às {hora}"
+                f"{saldo_info}\n\n"
+                f"🔗 <a href='{link_sheet}'>Ver Planilha</a>"
+            )
+            await update.message.reply_html(response)
             
         except ValueError as e:
             logger.error(f"Erro de valor: {valor_str} -> {e}")
@@ -226,12 +245,10 @@ async def dashboard_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     if not is_authorized(user_id): return
     
-    url = "https://dashboard-profit-swing-trade.streamlit.app/"
     message = (
-        f"<b>📊 Seu Dashboard está online!</b>\n\n"
-        f"Acesse agora para ver os gráficos de gastos:\n"
-        f"<a href='{url}'>{url}</a>\n\n"
-        "<i>Dica: Use a aba '🛒 Gastos' dentro do menu de navegação.</i>"
+        "<b>📊 Dashboard Exclusivo de Despesas</b>\n\n"
+        "Estou preparando o novo link privado para você! 🚀\n"
+        "<i>Use o arquivo ABRIR_DASHBOARD_GASTOS.bat enquanto o link online não fica pronto.</i>"
     )
     await update.message.reply_html(message)
 
