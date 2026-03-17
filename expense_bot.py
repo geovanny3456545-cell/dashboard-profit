@@ -226,7 +226,7 @@ async def dashboard_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     if not is_authorized(user_id): return
     
-    url = "https://dashboard-profit.streamlit.app"
+    url = "https://dashboard-profit-swing-trade.streamlit.app/"
     message = (
         f"<b>📊 Seu Dashboard está online!</b>\n\n"
         f"Acesse agora para ver os gráficos de gastos:\n"
