@@ -17,7 +17,15 @@ st.markdown("Dashboard exclusivo alimentado pelo **Telegram Bot**")
 @st.cache_resource
 def get_gspread_client():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    creds = ServiceAccountCredentials.from_json_keyfile_name(CREDS_FILE, scope)
+    
+    # Prioridade para st.secrets (Streamlit Cloud)
+    if "gcp_service_account" in st.secrets:
+        creds_dict = dict(st.secrets["gcp_service_account"])
+        creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+    else:
+        # Fallback para arquivo local (Desenvolvimento)
+        creds = ServiceAccountCredentials.from_json_keyfile_name(CREDS_FILE, scope)
+        
     return gspread.authorize(creds)
 
 @st.cache_data(ttl=600)
