@@ -12,6 +12,9 @@ except ImportError:
 import pandas as pd
 import datetime
 
+# --- Modules ---
+from utils import data_loader
+from utils import metrics as m
 from tabs import resumo, operacoes, graficos, calendario, ativos, relatorio, mentoria, swing, opcoes
 
 # --- PAGE CONFIG ---
