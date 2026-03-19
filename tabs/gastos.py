@@ -10,7 +10,15 @@ CREDS_FILE = r"G:\Meu Drive\Antigravity\Bitcoin\certs\google_creds.json"
 
 def get_gspread_client():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    creds = ServiceAccountCredentials.from_json_keyfile_name(CREDS_FILE, scope)
+    
+    # Priority for st.secrets (Streamlit Cloud)
+    if "gcp_service_account" in st.secrets:
+        creds_dict = dict(st.secrets["gcp_service_account"])
+        creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+    else:
+        # Fallback for local file (Development)
+        creds = ServiceAccountCredentials.from_json_keyfile_name(CREDS_FILE, scope)
+        
     return gspread.authorize(creds)
 
 @st.cache_data(ttl=600)

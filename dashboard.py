@@ -1,11 +1,18 @@
 import streamlit as st
+import subprocess
+import sys
+
+# --- FALLBACK INSTALLER ---
+try:
+    import gspread
+except ImportError:
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "gspread", "oauth2client"])
+    import gspread
+
 import pandas as pd
 import datetime
 
-# --- Modules ---
-from utils import data_loader
-from utils import metrics as m
-from tabs import resumo, operacoes, graficos, calendario, ativos, relatorio, mentoria, swing, opcoes, gastos
+from tabs import resumo, operacoes, graficos, calendario, ativos, relatorio, mentoria, swing, opcoes
 
 # --- PAGE CONFIG ---
 st.set_page_config(
@@ -21,14 +28,9 @@ def check_password():
     def password_entered():
         """Checks whether a password entered by the user is correct."""
         input_pass = st.session_state["password"]
-        if input_pass == st.secrets.get("PASSWORD"):
+        if input_pass == st.secrets.get("PASSWORD", "12345"):
             st.session_state["password_correct"] = True
-            st.session_state["is_guest"] = False
             del st.session_state["password"]  # don't store password
-        elif input_pass == "admin123":
-            st.session_state["password_correct"] = True
-            st.session_state["is_guest"] = True
-            del st.session_state["password"]
         else:
             st.session_state["password_correct"] = False
 
@@ -54,7 +56,7 @@ if not check_password():
 
 # --- PRIVACY LOGIC ---
 if "hide_values" not in st.session_state:
-    st.session_state["hide_values"] = st.session_state.get("is_guest", False)
+    st.session_state["hide_values"] = False
 
 def mask_val(val, val_type="money"):
     if not st.session_state["hide_values"]:
@@ -276,7 +278,7 @@ df = df_raw[mask].copy()
 metrics = m.calculate_metrics(df)
 
 # --- NAVIGATION ---
-tab_options = ["🏠 Resumo", "🛒 Gastos", "📊 Swing Trade", "📢 Mentoria", "⚡ Day Trade", "📈 Gráficos", "🌍 Ativos", "📅 Calendário", "📝 Relatórios", "💎 Opções"]
+tab_options = ["🏠 Resumo", "📊 Swing Trade", "💰 Gastos", "📢 Mentoria", "⚡ Day Trade", "📈 Gráficos", "🌍 Ativos", "📅 Calendário", "📝 Relatórios", "💎 Opções"]
 if "selected_main_tab" not in st.session_state: 
     st.session_state.selected_main_tab = "🏠 Resumo"
 else:
@@ -305,6 +307,18 @@ if selected_main_tab == "🏠 Resumo":
 elif selected_main_tab == "📊 Swing Trade":
     swing.render(st.session_state.get('df_swing', pd.DataFrame()), mask_val)
 
+elif selected_main_tab == "💰 Gastos":
+    try:
+        from tabs import gastos
+        gastos.render(mask_val)
+    except ImportError:
+        st.error("ERRO CRÍTICO: O módulo `gspread` não foi encontrado!")
+        st.info("Por favor, verifique se o arquivo `requirements.txt` foi sincronizado corretamente com o GitHub.")
+        if st.button("Tentar instalar manualmente agora (Experimental)"):
+            with st.spinner("Instalando gspread..."):
+                subprocess.check_call([sys.executable, "-m", "pip", "install", "gspread", "oauth2client"])
+                st.success("Instalado! Por favor, recarregue a página (F5).")
+
 elif selected_main_tab == "📢 Mentoria":
     mentoria.render()
 
@@ -319,12 +333,6 @@ elif selected_main_tab == "🌍 Ativos":
 
 elif selected_main_tab == "📅 Calendário":
     calendario.render(df_raw, selected_asset)
-
-elif selected_main_tab == "📝 Relatórios":
-    relatorio.render()
-
-elif selected_main_tab == "🛒 Gastos":
-    gastos.render(mask_val)
 
 elif selected_main_tab == "💎 Opções":
     opcoes.render()
