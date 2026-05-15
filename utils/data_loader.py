@@ -104,34 +104,42 @@ def _load_performance_report():
         lines = content.splitlines()
         
         header_idx = -1
-        sep = ';' 
         for i, line in enumerate(lines[:20]):
             l_low = line.lower()
             if "ativo" in l_low and ("abertura" in l_low or "data" in l_low):
                 header_idx = i
-                # Robust separator detection: prefer ; if it appears multiple times
-                if line.count(';') >= 5:
-                    sep = ';'
-                else:
-                    sep = ',' if line.count(',') > line.count(';') else ';'
                 break
         
         if header_idx == -1: return pd.DataFrame(), {}
         
+        # Detect separator based on the header line
+        header_line = lines[header_idx]
+        sep = ';' if header_line.count(';') > header_line.count(',') else ','
+        
+        # We'll use a more flexible approach: try to parse with the detected sep
+        # but also handle cases where the sep might change in the file (rare but happens in some exports)
         f = io.StringIO(content)
         for _ in range(header_idx): f.readline()
         
-        header_line = f.readline().strip()
-        reader_h = csv.reader(io.StringIO(header_line), delimiter=sep)
-        headers = next(reader_h)
-        # Clean headers: remove quotes AND replace internal commas with spaces for mapping
-        headers = [h.replace('"', '').replace(',', ' ').strip() for h in headers]
+        # Read headers
+        header_row = next(csv.reader([f.readline()], delimiter=sep))
+        headers = [h.replace('"', '').replace(',', ' ').strip() for h in header_row]
         
-        reader_d = csv.reader(f, delimiter=sep, quoting=csv.QUOTE_MINIMAL)
-        # We enforce length consistency here
-        data = [r for r in reader_d if len(r) > 0 and r[0].strip() != '']
+        # Read data rows
+        data = []
+        reader = csv.reader(f, delimiter=sep, quoting=csv.QUOTE_MINIMAL)
+        for r in reader:
+            if not r or not r[0].strip(): continue
+            # If a row has only 1 column, it might be using the WRONG separator
+            if len(r) == 1 and (';' in r[0] or ',' in r[0]):
+                alt_sep = ';' if r[0].count(';') > r[0].count(',') else ','
+                alt_r = next(csv.reader([r[0]], delimiter=alt_sep))
+                data.append(alt_r)
+            else:
+                data.append(r)
         
         if not data: return pd.DataFrame(), {}
+
         
         # Max column detection for alignment
         max_cols = max(len(r) for r in data)
