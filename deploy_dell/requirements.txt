@@ -1,0 +1,13 @@
+streamlit
+pandas
+numpy
+requests
+yfinance
+plotly
+gspread
+oauth2client
+google-auth
+google-auth-oauthlib
+python-telegram-bot[job-queue]
+python-dotenv
+paramiko
