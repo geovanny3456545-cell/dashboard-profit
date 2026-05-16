@@ -46,7 +46,7 @@ def load_data():
                     df = df.drop(columns=[col])
 
             # Optimized Merge - Keep LAST entry from spreadsheet if duplicates exist
-            cols_to_use = ['Ativo_Base', 'Merge_Dt', 'Pattern', 'RealPattern', 'Tipo de Ordem', 'Management', 'HandError']
+            cols_to_use = ['Ativo_Base', 'Merge_Dt', 'Pattern', 'RealPattern', 'Tipo de Ordem', 'Management', 'HandError', 'TeriaPagado', 'Observation']
             df_p_clean = df_p.drop_duplicates(subset=['Ativo_Base', 'Merge_Dt'], keep='last')
             
             df = df.merge(df_p_clean[cols_to_use], on=['Ativo_Base', 'Merge_Dt'], how='left')
@@ -57,6 +57,8 @@ def load_data():
             df['Tipo de Ordem'] = df['Tipo de Ordem'].fillna("Não Classificado")
             df['Management'] = df['Management'].fillna("Ok")
             df['HandError'] = df['HandError'].fillna("Sim") # Mão correta: Sim (default)
+            df['TeriaPagado'] = df['TeriaPagado'].fillna("Não")
+            df['Observation'] = df['Observation'].fillna("")
             
             df['Pattern_View'] = df['Pattern'].map(normalize_pattern)
             df['RealPattern_View'] = df['RealPattern'].map(normalize_pattern)
@@ -250,6 +252,8 @@ def _load_pattern_sheet():
             elif 'abertura' in cl: col_map[c] = 'Abertura'
             elif 'gerencia' in cl: col_map[c] = 'Management'
             elif 'mo' in cl or 'mao' in cl or 'mão' in cl: col_map[c] = 'HandError'
+            elif 'teria' in cl and 'pagado' in cl: col_map[c] = 'TeriaPagado'
+            elif 'observa' in cl: col_map[c] = 'Observation'
             elif 'tipo' in cl and 'ordem' in cl: col_map[c] = 'Tipo de Ordem'
         df_p = df_p.rename(columns=col_map)
         if 'Ativo' in df_p.columns and 'Abertura' in df_p.columns:
@@ -259,6 +263,8 @@ def _load_pattern_sheet():
             if 'RealPattern' not in df_p.columns: df_p['RealPattern'] = df_p['Pattern']
             if 'Management' not in df_p.columns: df_p['Management'] = "Ok"
             if 'HandError' not in df_p.columns: df_p['HandError'] = "Sim"
+            if 'TeriaPagado' not in df_p.columns: df_p['TeriaPagado'] = "Não"
+            if 'Observation' not in df_p.columns: df_p['Observation'] = ""
             return df_p.dropna(subset=['Abertura_Dt', 'Ativo'])
         return pd.DataFrame()
     except Exception:

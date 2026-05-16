@@ -157,11 +157,31 @@ def render(df, metrics, mask_val):
         st.markdown(grid_row("Drawdown Máximo", f"R$ {max_dd:,.2f}", "loss-val"), unsafe_allow_html=True)
         st.markdown(grid_row("Seq. Vencedora", f"{max_w_streak}", "profit-val"), unsafe_allow_html=True)
         st.markdown(grid_row("Seq. Perdedora", f"{max_l_streak}", "loss-val"), unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+
+        st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+        st.markdown("<div class='grid-header' style='font-size: 1.1em; color: #ffaa00; border-bottom: 2px solid #ffaa00; padding-bottom: 5px; margin-bottom: 15px;'>Monitor Comportamental</div>", unsafe_allow_html=True)
         
-        st.markdown("<div style='margin-top:20px;'></div>", unsafe_allow_html=True)
-        st.markdown("<div class='grid-header'>Monitor de Disciplina (Substack)</div>", unsafe_allow_html=True)
+        # New Metrics
+        num_violinadas = metrics.get('num_violinadas', 0)
+        potencial_perdido = metrics.get('potencial_perdido', 0)
         streak = metrics.get('discipline_streak', 0)
+
+        st.markdown(grid_row("Violinadas no BE", f"{num_violinadas}", "loss-val" if num_violinadas > 0 else ""), unsafe_allow_html=True)
+        st.markdown(grid_row("Lucro Deixado (BE)", f"R$ {potencial_perdido:,.2f}", "loss-val" if potencial_perdido > 0 else ""), unsafe_allow_html=True)
         st.markdown(grid_row("Trades sem Fading", f"{streak} 🔥", "profit-val" if streak > 5 else ""), unsafe_allow_html=True)
+        
+        if num_violinadas > 0:
+            st.markdown(f"""
+            <div style="background: rgba(255, 170, 0, 0.05); border: 1px solid rgba(255, 170, 0, 0.1); border-radius: 4px; padding: 10px; margin-top: 10px;">
+                <div style="color: #ffaa00; font-size: 0.75em; font-weight: bold; text-transform: uppercase; margin-bottom: 3px;">Alerta de Gestão</div>
+                <div style="color: #ccc; font-size: 0.85em; line-height: 1.3;">
+                    Você foi tirado de <b>{num_violinadas}</b> trades no zero que acabaram pagando o alvo. 
+                    Isso custou <b>R$ {potencial_perdido:,.2f}</b> teóricos.
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+        
         st.markdown('</div>', unsafe_allow_html=True)
 
     # --- LATEST REPORT HIGHLIGHT ---

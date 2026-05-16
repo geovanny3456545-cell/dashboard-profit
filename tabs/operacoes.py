@@ -38,7 +38,13 @@ def render(df, df_raw, mask_val):
     
     section_header("Performance do Dia", icon="⚡")
 
+    # Define colors and strings for the header
+    c_res = "#00fa9a" if total_pnl >= 0 else "#ff4d4d"
     s_res_liq = mask_val(total_pnl) if isinstance(mask_val(total_pnl), str) else f"R$ {total_pnl:,.2f}"
+    s_ops = f"{num_trades}"
+    s_win = f"{win_rate:.1f}%"
+    s_lucro = mask_val(gross_profit) if isinstance(mask_val(gross_profit), str) else f"R$ {gross_profit:,.2f}"
+    s_prej = mask_val(gross_loss) if isinstance(mask_val(gross_loss), str) else f"R$ {gross_loss:,.2f}"
     
     # Premium Header Container
     st.markdown(f"""

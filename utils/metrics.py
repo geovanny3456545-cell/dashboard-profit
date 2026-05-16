@@ -65,6 +65,20 @@ def calculate_metrics(df):
             else:
                 discipline_streak = 0 # Reset on error
     
+    # Violinada no BE Analysis
+    # Definition: TeriaPagado == 'Sim' AND (Res_Numeric is near zero or negative)
+    # We consider "near zero" as being between -30 and 30 (covering spread/commissions)
+    violinadas_df = df[
+        (df['TeriaPagado'].astype(str).str.upper().str.contains('SIM')) & 
+        (df['Res_Numeric'] <= 30)
+    ]
+    num_violinadas = len(violinadas_df)
+    
+    # Financial impact: If each violinada had paid a 2:1 target (assuming R$ 500 risk -> R$ 1000 profit)
+    # Total potential lost = num_violinadas * 1000 (theoretical)
+    # Or more accurately: what they *didn't* gain.
+    potencial_perdido = num_violinadas * 1000 # Using the user's standard R=500 -> 2R=1000
+
     return {
         'total_pnl': total_pnl,
         'gross_profit': gross_profit,
@@ -81,5 +95,7 @@ def calculate_metrics(df):
         'max_dd': max_dd,
         'max_w_streak': max_w_streak,
         'max_l_streak': max_l_streak,
-        'discipline_streak': discipline_streak
+        'discipline_streak': discipline_streak,
+        'num_violinadas': num_violinadas,
+        'potencial_perdido': potencial_perdido
     }
